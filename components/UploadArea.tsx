@@ -231,8 +231,8 @@ export const UploadArea: React.FC<UploadAreaProps> = ({ onPairsCreated }) => {
                 <Info className="w-3 h-3 text-accent mt-0.5 shrink-0" />
                 <div className="text-[10px] text-slate-500 leading-tight">
                   <span className="font-bold text-slate-600 block mb-0.5">Bulk Upload Tip:</span>
-                  Upload two ZIPs (e.g. <code>source_en.zip</code> & <code>target_de.zip</code>). <br/>
-                  Ensure filenames match inside (e.g. <code>home.png</code> in both).
+                  Upload two ZIPs (e.g. <code>en-US.zip</code> & <code>de-DE.zip</code> OR <code>fr-FR.zip</code>).<br/>
+                  Ensure filenames match inside (e.g. <code>home.png</code> in both). Only FR & DE are supported for now.
                 </div>
             </div>
           </div>
