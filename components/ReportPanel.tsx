@@ -279,7 +279,11 @@ export const ReportPanel: React.FC<ReportPanelProps> = ({ pair, onGenerate, isGe
     const url = URL.createObjectURL(blob);
     const downloadAnchorNode = document.createElement('a');
     downloadAnchorNode.setAttribute("href", url);
-    downloadAnchorNode.setAttribute("download", `${pair.fileName}_en-US_${targetLangLabel}.html`);
+    
+    // Updated: Prefix filename with quality level (e.g., Poor_Filename.html)
+    const qualityPrefix = report.overall.qualityLevel;
+    downloadAnchorNode.setAttribute("download", `${qualityPrefix}_${pair.fileName}_en-US_${targetLangLabel}.html`);
+    
     document.body.appendChild(downloadAnchorNode);
     downloadAnchorNode.click();
     downloadAnchorNode.remove();
