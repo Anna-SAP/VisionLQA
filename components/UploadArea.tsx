@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { UploadCloud, Loader2, FileArchive } from 'lucide-react';
+import { UploadCloud, Loader2, FileArchive, Info } from 'lucide-react';
 import { ScreenshotPair, SupportedLocale } from '../types';
 import JSZip from 'jszip';
 
@@ -196,7 +196,7 @@ export const UploadArea: React.FC<UploadAreaProps> = ({ onPairsCreated }) => {
   };
 
   return (
-    <div className="p-4 border-2 border-dashed border-slate-300 rounded-lg bg-slate-50 hover:bg-slate-100 transition-colors text-center cursor-pointer relative group h-40 flex items-center justify-center">
+    <div className="p-4 border-2 border-dashed border-slate-300 rounded-lg bg-slate-50 hover:bg-slate-100 transition-colors text-center cursor-pointer relative group min-h-[180px] flex items-center justify-center">
       <input 
         type="file" 
         multiple 
@@ -212,19 +212,29 @@ export const UploadArea: React.FC<UploadAreaProps> = ({ onPairsCreated }) => {
           <p className="text-sm font-medium">Processing files...</p>
         </div>
       ) : (
-        <div className="flex flex-col items-center justify-center space-y-2 pointer-events-none">
+        <div className="flex flex-col items-center justify-center space-y-2 pointer-events-none w-full">
           <div className="flex space-x-2 text-slate-400 group-hover:text-accent transition-colors">
              <UploadCloud className="w-8 h-8" />
              <FileArchive className="w-8 h-8" />
           </div>
-          <p className="text-sm font-medium text-slate-600">
-            Drag & drop images or ZIP archives
-          </p>
-          <div className="text-xs text-slate-400 max-w-[200px] leading-relaxed">
-            <p>Supported: PNG, JPG</p>
-            <p className="font-semibold text-slate-500 mt-1">
-              Supports EN vs. DE / FR
+          <div className="pb-2">
+            <p className="text-sm font-medium text-slate-600">
+              Drag & drop images or ZIP archives
             </p>
+            <p className="text-xs text-slate-400 mt-1">
+              Supports PNG, JPG
+            </p>
+          </div>
+          
+          <div className="bg-white/60 border border-slate-200 rounded p-2 max-w-[90%] text-left">
+            <div className="flex items-start space-x-2">
+                <Info className="w-3 h-3 text-accent mt-0.5 shrink-0" />
+                <div className="text-[10px] text-slate-500 leading-tight">
+                  <span className="font-bold text-slate-600 block mb-0.5">Bulk Upload Tip:</span>
+                  Upload two ZIPs (e.g. <code>source_en.zip</code> & <code>target_de.zip</code>). <br/>
+                  Ensure filenames match inside (e.g. <code>home.png</code> in both).
+                </div>
+            </div>
           </div>
         </div>
       )}

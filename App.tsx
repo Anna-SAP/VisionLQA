@@ -8,6 +8,7 @@ import { BulkRunModal } from './components/BulkRunModal';
 import { ScreenshotPair, LlmRequestPayload, BulkProcessingState, ScreenshotReport } from './types';
 import { callTranslationQaLLM } from './services/llmService';
 import { Layers, Activity, BookOpen, PanelLeftOpen, PanelLeftClose, PlayCircle } from 'lucide-react';
+import { LLM_DISPLAY_NAME } from './constants';
 import JSZip from 'jszip';
 
 const App: React.FC = () => {
@@ -335,6 +336,14 @@ const App: React.FC = () => {
         </div>
         <div className="flex items-center space-x-4">
            
+           {/* Model Info */}
+           <div className="hidden md:flex flex-col items-end">
+             <span className="text-xs font-bold text-slate-700 tracking-tight">{LLM_DISPLAY_NAME}</span>
+             <span className="text-[10px] font-medium text-emerald-600">Active</span>
+           </div>
+           
+           <div className="h-6 w-px bg-slate-200 hidden md:block"></div>
+
            <button 
              onClick={handleOpenBulkModal}
              className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded text-sm font-medium transition-colors shadow-sm"

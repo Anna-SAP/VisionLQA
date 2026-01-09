@@ -1,6 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 import { LlmRequestPayload, LlmResponse, ScreenshotReport } from '../types';
-import { getAnalysisSystemPrompt } from '../constants';
+import { getAnalysisSystemPrompt, LLM_MODEL_ID } from '../constants';
 
 interface ProcessedImage {
   mimeType: string;
@@ -99,7 +99,7 @@ export async function callTranslationQaLLM(payload: LlmRequestPayload): Promise<
 
     // 3. Call Gemini API
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
+      model: LLM_MODEL_ID,
       contents: {
         parts: [
           { inlineData: { mimeType: enImage.mimeType, data: enImage.data } },

@@ -1,5 +1,8 @@
 import { SupportedLocale } from "./types";
 
+export const LLM_MODEL_ID = 'gemini-3-flash-preview';
+export const LLM_DISPLAY_NAME = 'Gemini 3 Flash';
+
 export const getAnalysisSystemPrompt = (targetLang: SupportedLocale) => {
   const langName = targetLang === 'fr-FR' ? '法语' : '德语';
   const langCode = targetLang;
