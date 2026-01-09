@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { UploadArea } from './components/UploadArea';
 import { PairList } from './components/PairList';
 import { CompareView } from './components/CompareView';
@@ -8,7 +8,7 @@ import { BulkRunModal } from './components/BulkRunModal';
 import { ScreenshotPair, LlmRequestPayload, BulkProcessingState, ScreenshotReport } from './types';
 import { callTranslationQaLLM } from './services/llmService';
 import { Layers, Activity, BookOpen, PanelLeftOpen, PanelLeftClose, PlayCircle } from 'lucide-react';
-import { LLM_DISPLAY_NAME } from './constants';
+import { LLM_DISPLAY_NAME, APP_VERSION } from './constants';
 import JSZip from 'jszip';
 
 const App: React.FC = () => {
@@ -34,7 +34,7 @@ const App: React.FC = () => {
   const abortControllerRef = useRef<AbortController | null>(null);
 
   // Demo Data Loading
-  const loadDemoData = () => {
+  const loadDemoData = useCallback(() => {
     const demoId = "demo-pair-01";
     setPairs([
       {
@@ -48,12 +48,19 @@ const App: React.FC = () => {
     ]);
     setSelectedPairId(demoId);
     setGlossaryText("Site = Standort\nExtension = Nebenstelle");
-  };
+    setActiveRightPanel('global');
+  }, []);
+
+  // Auto-load demo data on mount
+  useEffect(() => {
+    loadDemoData();
+  }, [loadDemoData]);
 
   const handlePairsCreated = (newPairs: ScreenshotPair[]) => {
     setPairs(prev => [...prev, ...newPairs]);
     if (newPairs.length > 0 && !selectedPairId) {
       setSelectedPairId(newPairs[0].id);
+      setActiveRightPanel('report'); // Switch to report view when user uploads files
     }
   };
 
@@ -336,10 +343,16 @@ const App: React.FC = () => {
         </div>
         <div className="flex items-center space-x-4">
            
-           {/* Model Info */}
-           <div className="hidden md:flex flex-col items-end">
-             <span className="text-xs font-bold text-slate-700 tracking-tight">{LLM_DISPLAY_NAME}</span>
-             <span className="text-[10px] font-medium text-emerald-600">Active</span>
+           {/* Model Info & Version */}
+           <div className="hidden md:flex flex-col items-end mr-2">
+             <div className="flex items-center gap-1.5">
+                <span className="text-xs font-bold text-slate-700 tracking-tight">{LLM_DISPLAY_NAME}</span>
+                <span className="text-[10px] font-mono text-slate-400 bg-slate-100 px-1 rounded border border-slate-200">{APP_VERSION}</span>
+             </div>
+             <div className="flex items-center gap-1">
+                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
+                <span className="text-[10px] font-medium text-emerald-600">Active</span>
+             </div>
            </div>
            
            <div className="h-6 w-px bg-slate-200 hidden md:block"></div>
