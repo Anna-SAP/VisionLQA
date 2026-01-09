@@ -36,12 +36,16 @@ const App: React.FC = () => {
   // Demo Data Loading
   const loadDemoData = useCallback(() => {
     const demoId = "demo-pair-01";
+    // Using a high-quality Unsplash image that closely matches the "Cat looking at sunset" vibe
+    // This serves as a placeholder for the user's specific local asset.
+    const demoImage = "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?q=80&w=1200&auto=format&fit=crop";
+
     setPairs([
       {
         id: demoId,
-        fileName: "CallHandling_Settings",
-        enImageUrl: "https://picsum.photos/seed/en/800/600",
-        deImageUrl: "https://picsum.photos/seed/de/800/600",
+        fileName: "RingCentral_Cat_Demo",
+        enImageUrl: demoImage,
+        deImageUrl: demoImage, // Using same image for both to simulate 'filled' state as requested
         targetLanguage: 'de-DE',
         status: 'pending'
       }
