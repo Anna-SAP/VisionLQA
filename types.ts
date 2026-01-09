@@ -80,3 +80,13 @@ export interface LlmRequestPayload {
 export interface LlmResponse {
   report: ScreenshotReport;
 }
+
+export interface BulkProcessingState {
+  isProcessing: boolean;
+  total: number;
+  completed: number;
+  success: number;
+  failed: number;
+  errors: Array<{ id: string; fileName: string; error: string }>;
+  isComplete: boolean;
+}
