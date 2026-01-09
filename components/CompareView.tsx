@@ -23,6 +23,11 @@ export const CompareView: React.FC<CompareViewProps> = ({ pair }) => {
   
   const targetLabel = pair.targetLanguage; // e.g. 'de-DE' or 'fr-FR'
 
+  // Base width for images at 100% zoom (in pixels).
+  // 650px is close to max-w-2xl (672px) used previously.
+  const baseWidth = 650;
+  const currentWidth = baseWidth * zoom;
+
   return (
     <div className="h-full flex flex-col bg-slate-200 relative overflow-hidden">
       {/* Top Header Bar */}
@@ -63,49 +68,59 @@ export const CompareView: React.FC<CompareViewProps> = ({ pair }) => {
       </div>
 
       {/* Viewing Area */}
-      <div className="flex-1 flex overflow-auto p-8 space-x-8 justify-center bg-slate-200/50">
-        {/* EN-US */}
-        <div 
-          className="flex-1 flex flex-col min-w-[300px] max-w-2xl transition-transform duration-200 ease-out origin-top" 
-          style={{ transform: `scale(${zoom})` }}
-        >
-          <div className="relative bg-white shadow-xl rounded-lg overflow-hidden group border border-slate-200">
-            <img src={pair.enImageUrl} alt="en-US" className="w-full h-auto block" />
-            {/* Hover border effect */}
-            <div className="absolute inset-0 border-2 border-transparent group-hover:border-slate-400 pointer-events-none transition-colors"></div>
+      <div className="flex-1 overflow-auto bg-slate-200/50 relative">
+        {/* 
+            Layout Strategy:
+            w-fit + min-w-full + justify-center:
+            - If content < viewport: centers the content.
+            - If content > viewport: expands to fit content (aligns left), enabling scroll.
+            This prevents overlap and clipping.
+        */}
+        <div className="flex justify-center gap-8 p-8 min-w-full w-fit">
+          
+          {/* EN-US */}
+          <div 
+            className="flex-col flex-shrink-0 transition-all duration-200 ease-out" 
+            style={{ width: `${currentWidth}px` }}
+          >
+            <div className="relative bg-white shadow-xl rounded-lg overflow-hidden group border border-slate-200">
+              <img src={pair.enImageUrl} alt="en-US" className="w-full h-auto block" />
+              {/* Hover border effect */}
+              <div className="absolute inset-0 border-2 border-transparent group-hover:border-slate-400 pointer-events-none transition-colors"></div>
+            </div>
           </div>
-        </div>
 
-        {/* Target Language */}
-        <div 
-          className="flex-1 flex flex-col min-w-[300px] max-w-2xl transition-transform duration-200 ease-out origin-top" 
-          style={{ transform: `scale(${zoom})` }}
-        >
-          <div className="relative bg-white shadow-xl rounded-lg overflow-hidden group border border-slate-200">
-            <img src={pair.deImageUrl} alt={targetLabel} className="w-full h-auto block" />
-            {/* Hover border effect */}
-            <div className="absolute inset-0 border-2 border-transparent group-hover:border-purple-400 pointer-events-none transition-colors"></div>
-            
-            {/* Overlay bounding boxes if report exists */}
-            {pair.report?.issues.map(issue => (
-              issue.boundingBox && (
-                <div 
-                  key={issue.id}
-                  className={`absolute border-2 ${issue.severity === 'Critical' ? 'border-red-500 bg-red-500/10' : 'border-orange-400 bg-orange-400/10'}`}
-                  style={{
-                    left: `${issue.boundingBox.x * 100}%`,
-                    top: `${issue.boundingBox.y * 100}%`,
-                    width: `${issue.boundingBox.width * 100}%`,
-                    height: `${issue.boundingBox.height * 100}%`
-                  }}
-                  title={issue.descriptionZh}
-                >
-                  <span className="absolute -top-5 left-0 text-[10px] bg-red-600 text-white px-1 rounded shadow-sm whitespace-nowrap z-10 font-mono">
-                    {issue.id}
-                  </span>
-                </div>
-              )
-            ))}
+          {/* Target Language */}
+          <div 
+            className="flex-col flex-shrink-0 transition-all duration-200 ease-out" 
+            style={{ width: `${currentWidth}px` }}
+          >
+            <div className="relative bg-white shadow-xl rounded-lg overflow-hidden group border border-slate-200">
+              <img src={pair.deImageUrl} alt={targetLabel} className="w-full h-auto block" />
+              {/* Hover border effect */}
+              <div className="absolute inset-0 border-2 border-transparent group-hover:border-purple-400 pointer-events-none transition-colors"></div>
+              
+              {/* Overlay bounding boxes if report exists */}
+              {pair.report?.issues.map(issue => (
+                issue.boundingBox && (
+                  <div 
+                    key={issue.id}
+                    className={`absolute border-2 ${issue.severity === 'Critical' ? 'border-red-500 bg-red-500/10' : 'border-orange-400 bg-orange-400/10'}`}
+                    style={{
+                      left: `${issue.boundingBox.x * 100}%`,
+                      top: `${issue.boundingBox.y * 100}%`,
+                      width: `${issue.boundingBox.width * 100}%`,
+                      height: `${issue.boundingBox.height * 100}%`
+                    }}
+                    title={issue.descriptionZh}
+                  >
+                    <span className="absolute -top-5 left-0 text-[10px] bg-red-600 text-white px-1 rounded shadow-sm whitespace-nowrap z-10 font-mono">
+                      {issue.id}
+                    </span>
+                  </div>
+                )
+              ))}
+            </div>
           </div>
         </div>
       </div>
