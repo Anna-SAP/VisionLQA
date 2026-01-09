@@ -1,5 +1,7 @@
 // Data Models
 
+export type AppLanguage = 'zh' | 'en';
+
 export interface QaScores {
   accuracy: number;
   terminology: number;
@@ -22,8 +24,8 @@ export interface QaIssue {
   severity: 'Critical' | 'Major' | 'Minor';
   sourceText: string;
   targetText: string;
-  descriptionZh: string;
-  suggestionsTarget: string[]; // Renamed from suggestionsDe
+  description: string; // Renamed from descriptionZh
+  suggestionsTarget: string[];
 }
 
 export interface ScreenshotReport {
@@ -31,11 +33,11 @@ export interface ScreenshotReport {
   overall: {
     qualityLevel: 'Critical' | 'Poor' | 'Average' | 'Good' | 'Perfect';
     scores: QaScores;
-    sceneDescriptionZh: string;
-    mainProblemsSummaryZh: string;
+    sceneDescription: string; // Renamed from sceneDescriptionZh
+    mainProblemsSummary: string; // Renamed from mainProblemsSummaryZh
   };
   issues: QaIssue[];
-  summaryZh: {
+  summary: { // Renamed from summaryZh
     severeCount: number;
     majorCount: number;
     minorCount: number;
@@ -51,7 +53,7 @@ export interface ScreenshotPair {
   fileName: string;
   enImageUrl: string;
   deImageUrl: string; // Keeping variable name for compatibility, but represents target image
-  targetLanguage: SupportedLocale; // New field
+  targetLanguage: SupportedLocale; 
   status: 'pending' | 'analyzing' | 'completed' | 'failed';
   report?: ScreenshotReport;
   errorMessage?: string;
@@ -75,6 +77,7 @@ export interface LlmRequestPayload {
   deImageBase64?: string; // Or URL (Target Image)
   targetLanguage: SupportedLocale;
   glossaryText?: string;
+  reportLanguage: AppLanguage; // Add report language preference
 }
 
 export interface LlmResponse {

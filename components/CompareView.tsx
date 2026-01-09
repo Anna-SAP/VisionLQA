@@ -4,9 +4,10 @@ import { ZoomIn, ZoomOut, Maximize } from 'lucide-react';
 
 interface CompareViewProps {
   pair: ScreenshotPair | null;
+  t: any;
 }
 
-export const CompareView: React.FC<CompareViewProps> = ({ pair }) => {
+export const CompareView: React.FC<CompareViewProps> = ({ pair, t }) => {
   const [zoom, setZoom] = useState(1);
 
   if (!pair) {
@@ -35,7 +36,7 @@ export const CompareView: React.FC<CompareViewProps> = ({ pair }) => {
         
         {/* Source Badge (Left) */}
         <div className="bg-slate-600 text-white px-4 py-1.5 rounded shadow-sm text-sm font-bold tracking-wide flex items-center">
-          <span className="opacity-75 mr-2 text-xs font-normal uppercase">Source</span>
+          <span className="opacity-75 mr-2 text-xs font-normal uppercase">{t.source}</span>
           <span>en-US</span>
         </div>
 
@@ -62,7 +63,7 @@ export const CompareView: React.FC<CompareViewProps> = ({ pair }) => {
 
         {/* Target Badge (Right - Purple Highlight) */}
         <div className="bg-purple-500 text-white px-4 py-1.5 rounded shadow-sm text-sm font-bold tracking-wide flex items-center">
-          <span className="opacity-75 mr-2 text-xs font-normal uppercase">Target</span>
+          <span className="opacity-75 mr-2 text-xs font-normal uppercase">{t.target}</span>
           <span>{targetLabel}</span>
         </div>
       </div>
@@ -112,7 +113,7 @@ export const CompareView: React.FC<CompareViewProps> = ({ pair }) => {
                       width: `${issue.boundingBox.width * 100}%`,
                       height: `${issue.boundingBox.height * 100}%`
                     }}
-                    title={issue.descriptionZh}
+                    title={issue.description}
                   >
                     <span className="absolute -top-5 left-0 text-[10px] bg-red-600 text-white px-1 rounded shadow-sm whitespace-nowrap z-10 font-mono">
                       {issue.id}

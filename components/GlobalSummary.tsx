@@ -5,9 +5,10 @@ import { PieChart as PieIcon, AlertTriangle, CheckCircle, FileText } from 'lucid
 
 interface GlobalSummaryProps {
   pairs: ScreenshotPair[];
+  t: any;
 }
 
-export const GlobalSummary: React.FC<GlobalSummaryProps> = ({ pairs }) => {
+export const GlobalSummary: React.FC<GlobalSummaryProps> = ({ pairs, t }) => {
   const stats = useMemo(() => {
     const analyzed = pairs.filter(p => p.status === 'completed' && p.report);
     const pending = pairs.length - analyzed.length;
@@ -17,9 +18,9 @@ export const GlobalSummary: React.FC<GlobalSummaryProps> = ({ pairs }) => {
 
     analyzed.forEach(p => {
       if (p.report) {
-        critical += p.report.summaryZh.severeCount;
-        major += p.report.summaryZh.majorCount;
-        minor += p.report.summaryZh.minorCount;
+        critical += p.report.summary.severeCount;
+        major += p.report.summary.majorCount;
+        minor += p.report.summary.minorCount;
         
         p.report.issues.forEach(issue => {
           categoryCounts[issue.issueCategory] = (categoryCounts[issue.issueCategory] || 0) + 1;
@@ -36,7 +37,7 @@ export const GlobalSummary: React.FC<GlobalSummaryProps> = ({ pairs }) => {
     <div className="h-full bg-slate-50 p-4 overflow-y-auto">
       <h2 className="text-lg font-bold text-slate-800 mb-4 flex items-center">
         <PieIcon className="w-5 h-5 mr-2 text-accent" />
-        Global Summary
+        {t.globalStats}
       </h2>
 
       {/* High Level Stats */}
@@ -112,7 +113,7 @@ export const GlobalSummary: React.FC<GlobalSummaryProps> = ({ pairs }) => {
       {/* Export Action */}
       <button className="w-full mt-4 flex items-center justify-center space-x-2 p-3 border border-slate-300 rounded-lg text-slate-600 hover:bg-white transition-colors text-sm">
         <FileText className="w-4 h-4" />
-        <span>Export Global Report (JSON)</span>
+        <span>{t.exportGlobal}</span>
       </button>
     </div>
   );

@@ -5,24 +5,16 @@ import JSZip from 'jszip';
 
 interface UploadAreaProps {
   onPairsCreated: (pairs: ScreenshotPair[]) => void;
+  t: any;
 }
 
 // Helper: Normalize filenames for pairing
-// Removes extensions and common locale suffixes (e.g. _en, -fr, .de-DE)
 const normalizeName = (fileName: string): string => {
-  // 1. Remove extension
   const nameWithoutExt = fileName.substring(0, fileName.lastIndexOf('.')) || fileName;
-  
-  // 2. Remove locale suffixes
-  // Regex matches:
-  // - Separator: . _ - (optional)
-  // - Lang: en, de, fr
-  // - Region: -US, -DE, -FR (optional)
-  // - End of string
   return nameWithoutExt.replace(/[._-]?(en|de|fr)([-_]?[a-z]{2})?$/i, '').toLowerCase();
 };
 
-export const UploadArea: React.FC<UploadAreaProps> = ({ onPairsCreated }) => {
+export const UploadArea: React.FC<UploadAreaProps> = ({ onPairsCreated, t }) => {
   const [isProcessing, setIsProcessing] = useState(false);
 
   const processFiles = async (files: File[]) => {
@@ -39,7 +31,6 @@ export const UploadArea: React.FC<UploadAreaProps> = ({ onPairsCreated }) => {
       ) => {
          const pairs: ScreenshotPair[] = [];
          
-         // Build normalized lookup map for target images
          const targetLookup = new Map<string, Blob>();
          targetImages.forEach((blob, name) => {
             targetLookup.set(normalizeName(name), blob);
@@ -47,17 +38,13 @@ export const UploadArea: React.FC<UploadAreaProps> = ({ onPairsCreated }) => {
 
          enImages.forEach((enBlob, enFileName) => {
             const normalizedEn = normalizeName(enFileName);
-            
-            // Try exact match first (with extension)
             let targetBlob = targetImages.get(enFileName);
             
-            // If not found, try normalized match (ignoring extension and suffixes)
             if (!targetBlob) {
                targetBlob = targetLookup.get(normalizedEn);
             }
 
             if (targetBlob) {
-              // Create a clean display name (capitalize first letter)
               const displayName = normalizedEn.charAt(0).toUpperCase() + normalizedEn.slice(1);
               
               pairs.push({
@@ -74,9 +61,7 @@ export const UploadArea: React.FC<UploadAreaProps> = ({ onPairsCreated }) => {
       };
 
       // 1. Handle ZIP Pairing
-      // Looking for combinations: (en + de) OR (en + fr)
       if (zips.length >= 2) {
-        // Heuristic: Find files containing 'en'/'us' vs 'de' vs 'fr'
         const enZipFile = zips.find(f => /en[-_]?us/i.test(f.name) || f.name.toLowerCase().startsWith('en') || f.name.includes('en.zip'));
         const deZipFile = zips.find(f => /de[-_]?de/i.test(f.name) || f.name.toLowerCase().startsWith('de') || f.name.includes('de.zip'));
         const frZipFile = zips.find(f => /fr[-_]?fr/i.test(f.name) || f.name.toLowerCase().startsWith('fr') || f.name.includes('fr.zip'));
@@ -121,12 +106,10 @@ export const UploadArea: React.FC<UploadAreaProps> = ({ onPairsCreated }) => {
         const deFiles = images.filter(f => /de/i.test(f.name));
         const frFiles = images.filter(f => /fr/i.test(f.name));
 
-        // Attempt to pair EN with DE or FR using normalization
         enFiles.forEach(enFile => {
           const normEn = normalizeName(enFile.name);
           const displayName = normEn.charAt(0).toUpperCase() + normEn.slice(1);
 
-          // Match DE
           const deMatch = deFiles.find(de => normalizeName(de.name) === normEn);
           if (deMatch) {
              newPairs.push({
@@ -139,7 +122,6 @@ export const UploadArea: React.FC<UploadAreaProps> = ({ onPairsCreated }) => {
              });
           }
 
-          // Match FR
           const frMatch = frFiles.find(fr => normalizeName(fr.name) === normEn);
           if (frMatch) {
              newPairs.push({
@@ -153,7 +135,6 @@ export const UploadArea: React.FC<UploadAreaProps> = ({ onPairsCreated }) => {
           }
         });
 
-        // Fallback: If strict matching failed but user uploaded exactly 2 images
         if (newPairs.length === 0 && images.length === 2 && enFiles.length === 1) {
            const targetFile = deFiles[0] || frFiles[0];
            if (targetFile) {
@@ -209,7 +190,7 @@ export const UploadArea: React.FC<UploadAreaProps> = ({ onPairsCreated }) => {
       {isProcessing ? (
         <div className="flex flex-col items-center justify-center text-accent">
           <Loader2 className="w-8 h-8 animate-spin mb-2" />
-          <p className="text-sm font-medium">Processing files...</p>
+          <p className="text-sm font-medium">{t.processing}</p>
         </div>
       ) : (
         <div className="flex flex-col items-center justify-center space-y-2 pointer-events-none w-full">
@@ -219,10 +200,10 @@ export const UploadArea: React.FC<UploadAreaProps> = ({ onPairsCreated }) => {
           </div>
           <div className="pb-2">
             <p className="text-sm font-medium text-slate-600">
-              Drag & drop images or ZIP archives
+              {t.uploadTitle}
             </p>
             <p className="text-xs text-slate-400 mt-1">
-              Supports PNG, JPG
+              {t.uploadSub}
             </p>
           </div>
           
@@ -230,9 +211,8 @@ export const UploadArea: React.FC<UploadAreaProps> = ({ onPairsCreated }) => {
             <div className="flex items-start space-x-2">
                 <Info className="w-3 h-3 text-accent mt-0.5 shrink-0" />
                 <div className="text-[10px] text-slate-500 leading-tight">
-                  <span className="font-bold text-slate-600 block mb-0.5">Bulk Upload Tip:</span>
-                  Upload two ZIPs (e.g. <code>en-US.zip</code> & <code>de-DE.zip</code> OR <code>fr-FR.zip</code>).<br/>
-                  Ensure filenames match inside (e.g. <code>home.png</code> in both). Only FR & DE are supported for now.
+                  <span className="font-bold text-slate-600 block mb-0.5">{t.uploadTipTitle}</span>
+                  {t.uploadTip}
                 </div>
             </div>
           </div>

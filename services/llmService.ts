@@ -77,7 +77,7 @@ export async function callTranslationQaLLM(payload: LlmRequestPayload): Promise<
     ]);
 
     // 2. Prepare Prompt (Dynamic based on language)
-    const systemPrompt = getAnalysisSystemPrompt(payload.targetLanguage);
+    const systemPrompt = getAnalysisSystemPrompt(payload.targetLanguage, payload.reportLanguage);
     
     const userPrompt = `
       Project Context / Glossary:

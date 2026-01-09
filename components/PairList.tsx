@@ -70,15 +70,15 @@ export const PairList: React.FC<PairListProps> = ({ pairs, selectedId, onSelect 
               </div>
               
               {/* Mini Stats if analyzed */}
-              {pair.report && pair.report.overall && pair.report.summaryZh && (
+              {pair.report && pair.report.overall && pair.report.summary && (
                 <div className="mt-2 flex space-x-2 text-[10px] text-slate-500">
                   <span className="flex items-center">
                     <span className="w-1.5 h-1.5 rounded-full bg-red-500 mr-1"></span>
-                    {pair.report.summaryZh.severeCount} Crit
+                    {pair.report.summary.severeCount} Crit
                   </span>
                   <span className="flex items-center">
                     <span className="w-1.5 h-1.5 rounded-full bg-orange-500 mr-1"></span>
-                    {pair.report.summaryZh.majorCount} Maj
+                    {pair.report.summary.majorCount} Maj
                   </span>
                   <span className="flex items-center">
                     Acc: {pair.report.overall.scores.accuracy}

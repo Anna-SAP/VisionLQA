@@ -12,6 +12,7 @@ interface BulkRunModalProps {
   onDownloadCsv: () => void;
   onDownloadZip: () => void;
   pendingCount: number;
+  t: any;
 }
 
 export const BulkRunModal: React.FC<BulkRunModalProps> = ({ 
@@ -22,7 +23,8 @@ export const BulkRunModal: React.FC<BulkRunModalProps> = ({
   onStart, 
   onDownloadCsv,
   onDownloadZip,
-  pendingCount 
+  pendingCount,
+  t
 }) => {
   if (!isOpen) return null;
 
@@ -42,7 +44,7 @@ export const BulkRunModal: React.FC<BulkRunModalProps> = ({
                 <Download className="w-4 h-4" />
               </div>
             )}
-            Bulk QA Analysis
+            {t.bulkModalTitle}
           </h3>
           {!state.isProcessing && (
             <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
@@ -58,21 +60,20 @@ export const BulkRunModal: React.FC<BulkRunModalProps> = ({
           {!state.isProcessing && !state.isComplete && (
             <div className="space-y-4">
               <p className="text-slate-600 text-sm">
-                Ready to process <strong>{pendingCount}</strong> pending screenshots. 
-                This will generate QA reports for all unanalyzed items.
+                {t.bulkReady} <strong>{pendingCount}</strong>.
               </p>
               
               <div className="bg-yellow-50 p-3 rounded border border-yellow-100 text-xs text-yellow-800 flex items-start">
                 <AlertTriangle className="w-4 h-4 mr-2 shrink-0 mt-0.5" />
                 <div>
-                   <span className="font-bold">Note:</span> Max 5 concurrent requests. Large batches may take a few minutes.
+                   {t.bulkNote}
                 </div>
               </div>
 
               <div className="flex justify-end space-x-3 pt-2">
-                <Button variant="outline" onClick={onClose}>Cancel</Button>
+                <Button variant="outline" onClick={onClose}>{t.cancel}</Button>
                 <Button onClick={onStart} disabled={pendingCount === 0}>
-                  Start Bulk Run ({pendingCount})
+                  {t.startBulk} ({pendingCount})
                 </Button>
               </div>
             </div>
@@ -85,7 +86,7 @@ export const BulkRunModal: React.FC<BulkRunModalProps> = ({
               <div>
                 <div className="flex justify-between text-sm mb-2">
                   <span className="font-medium text-slate-700">
-                    {state.isComplete ? 'Analysis Complete' : `Processing... ${state.completed}/${state.total}`}
+                    {state.isComplete ? t.complete : `${t.processingCount} ${state.completed}/${state.total}`}
                   </span>
                   <span className="font-bold text-accent">{percent}%</span>
                 </div>
@@ -101,11 +102,11 @@ export const BulkRunModal: React.FC<BulkRunModalProps> = ({
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-green-50 border border-green-100 p-3 rounded text-center">
                   <div className="text-2xl font-bold text-green-600">{state.success}</div>
-                  <div className="text-xs text-green-800 uppercase font-bold tracking-wider">Success</div>
+                  <div className="text-xs text-green-800 uppercase font-bold tracking-wider">{t.success}</div>
                 </div>
                 <div className="bg-red-50 border border-red-100 p-3 rounded text-center">
                   <div className="text-2xl font-bold text-red-600">{state.failed}</div>
-                  <div className="text-xs text-red-800 uppercase font-bold tracking-wider">Failed</div>
+                  <div className="text-xs text-red-800 uppercase font-bold tracking-wider">{t.failed}</div>
                 </div>
               </div>
 
@@ -127,17 +128,17 @@ export const BulkRunModal: React.FC<BulkRunModalProps> = ({
               <div className="flex flex-col space-y-2 pt-2 border-t border-slate-100">
                 {state.isProcessing ? (
                    <Button variant="secondary" onClick={onCancel} className="w-full">
-                     Cancel Operation
+                     {t.cancel}
                    </Button>
                 ) : (
                    <div className="grid grid-cols-2 gap-3">
                      <Button onClick={onDownloadZip} variant="outline" className="flex items-center justify-center">
                         <Archive className="w-4 h-4 mr-2" />
-                        Download All (ZIP)
+                        {t.downloadZip}
                      </Button>
                      <Button onClick={onDownloadCsv} className="flex items-center justify-center">
                         <FileSpreadsheet className="w-4 h-4 mr-2" />
-                        Summary (CSV)
+                        {t.downloadCsv}
                      </Button>
                    </div>
                 )}
@@ -146,7 +147,7 @@ export const BulkRunModal: React.FC<BulkRunModalProps> = ({
                     onClick={onClose} 
                     className="text-xs text-slate-400 hover:text-slate-600 text-center mt-2 underline"
                   >
-                    Close Window
+                    {t.close}
                   </button>
                 )}
               </div>
