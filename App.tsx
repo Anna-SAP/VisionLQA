@@ -211,7 +211,9 @@ const App: React.FC = () => {
   const generateSummaryCsv = () => {
     // Filter for Poor or Critical
     const criticalItems = pairs.filter(p => 
-      p.report && (p.report.overall.qualityLevel === 'Critical' || p.report.overall.qualityLevel === 'Poor')
+      p.report && 
+      p.report.overall && 
+      (p.report.overall.qualityLevel === 'Critical' || p.report.overall.qualityLevel === 'Poor')
     );
 
     if (criticalItems.length === 0) {
@@ -245,7 +247,8 @@ const App: React.FC = () => {
   };
 
   const generateBulkZip = async () => {
-    const completedPairs = pairs.filter(p => p.status === 'completed' && p.report);
+    // Check for report AND overall to prevent undefined errors
+    const completedPairs = pairs.filter(p => p.status === 'completed' && p.report && p.report.overall);
     if (completedPairs.length === 0) {
       alert("No completed reports to download.");
       return;
@@ -292,7 +295,13 @@ const App: React.FC = () => {
     const url = URL.createObjectURL(content);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `Batch_LQA_Reports_${new Date().toISOString().slice(0,10)}.zip`;
+    
+    // Determine filename based on language
+    const distinctLangs = new Set(completedPairs.map(p => p.targetLanguage));
+    const langCode = distinctLangs.size === 1 ? [...distinctLangs][0] : 'Mixed';
+    const dateStr = new Date().toISOString().slice(0, 10);
+    link.download = `VisionLQA_${langCode}_${dateStr}.zip`;
+
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -424,6 +433,20 @@ export default App;
 
 // Helper to generate HTML string (Duplicated logic from ReportPanel to allow independent generation)
 const generateReportHtml = (report: ScreenshotReport, fileName: string, targetLang: string) => {
+    // Add safety check for overall and summaryZh
+    if (!report || !report.overall || !report.summaryZh || !report.issues) {
+      return `
+      <!DOCTYPE html>
+      <html>
+        <head><title>Error</title></head>
+        <body>
+          <h1>Report Generation Failed</h1>
+          <p>The report data for ${fileName} is incomplete or corrupted.</p>
+        </body>
+      </html>
+      `;
+    }
+
     const { overall, issues, summaryZh } = report;
     const date = new Date().toLocaleString();
     const targetLangLabel = targetLang === 'fr-FR' ? 'fr-FR' : 'de-DE';
