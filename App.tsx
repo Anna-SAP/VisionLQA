@@ -1,15 +1,17 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useRef, useCallback, Suspense } from 'react';
 import { UploadArea } from './components/UploadArea';
 import { PairList } from './components/PairList';
 import { CompareView } from './components/CompareView';
-import { ReportPanel } from './components/ReportPanel';
-import { GlobalSummary } from './components/GlobalSummary';
-import { BulkRunModal } from './components/BulkRunModal';
 import { ScreenshotPair, LlmRequestPayload, BulkProcessingState, ScreenshotReport, AppLanguage } from './types';
 import { callTranslationQaLLM } from './services/llmService';
-import { Layers, Activity, BookOpen, PanelLeftOpen, PanelLeftClose, PlayCircle, Globe } from 'lucide-react';
+import { Layers, Activity, BookOpen, PanelLeftOpen, PanelLeftClose, PlayCircle, Globe, Loader2 } from 'lucide-react';
 import { LLM_DISPLAY_NAME, APP_VERSION, UI_TEXT } from './constants';
 import JSZip from 'jszip';
+
+// Code Splitting: Lazy load heavy components
+const ReportPanel = React.lazy(() => import('./components/ReportPanel').then(module => ({ default: module.ReportPanel })));
+const GlobalSummary = React.lazy(() => import('./components/GlobalSummary').then(module => ({ default: module.GlobalSummary })));
+const BulkRunModal = React.lazy(() => import('./components/BulkRunModal').then(module => ({ default: module.BulkRunModal })));
 
 const App: React.FC = () => {
   // Language State
@@ -102,10 +104,8 @@ const App: React.FC = () => {
     setActiveRightPanel('report');
   }, [appLanguage]);
 
-  // Auto-load demo data on mount
-  useEffect(() => {
-    loadDemoData();
-  }, []);
+  // Performance: Removed automatic loadDemoData effect to save initial bandwidth.
+  // User can manually load demo data via the button.
 
   const handlePairsCreated = (newPairs: ScreenshotPair[]) => {
     setPairs(prev => [...prev, ...newPairs]);
@@ -329,17 +329,21 @@ const App: React.FC = () => {
   return (
     <div className="h-screen w-screen flex flex-col bg-slate-50 text-slate-900">
       
-      <BulkRunModal 
-        isOpen={isBulkModalOpen}
-        state={bulkState}
-        pendingCount={pendingCount}
-        onClose={() => setIsBulkModalOpen(false)}
-        onCancel={handleCancelBulk}
-        onStart={startBulkAnalysis}
-        onDownloadCsv={generateSummaryCsv}
-        onDownloadZip={generateBulkZip}
-        t={t}
-      />
+      <Suspense fallback={null}>
+         {isBulkModalOpen && (
+           <BulkRunModal 
+             isOpen={isBulkModalOpen}
+             state={bulkState}
+             pendingCount={pendingCount}
+             onClose={() => setIsBulkModalOpen(false)}
+             onCancel={handleCancelBulk}
+             onStart={startBulkAnalysis}
+             onDownloadCsv={generateSummaryCsv}
+             onDownloadZip={generateBulkZip}
+             t={t}
+           />
+         )}
+      </Suspense>
 
       {/* Navbar */}
       <header className="h-14 bg-white border-b border-slate-200 flex items-center px-4 justify-between shrink-0 z-20 shadow-sm">
@@ -447,18 +451,25 @@ const App: React.FC = () => {
           <CompareView pair={selectedPair} t={t} />
         </section>
 
-        <aside className="w-[400px] flex flex-col bg-white shrink-0 shadow-xl z-10">
-          {activeRightPanel === 'global' ? (
-            <GlobalSummary pairs={pairs} t={t} />
-          ) : (
-            <ReportPanel 
-              pair={selectedPair} 
-              onGenerate={handleGenerateReport}
-              isGenerating={selectedPair?.status === 'analyzing'}
-              glossary={glossaryText}
-              t={t}
-            />
-          )}
+        <aside className="w-[400px] flex flex-col bg-white shrink-0 shadow-xl z-10 relative">
+          <Suspense fallback={
+            <div className="flex flex-col items-center justify-center h-full text-slate-400">
+              <Loader2 className="w-8 h-8 animate-spin mb-2" />
+              <p className="text-sm">Loading module...</p>
+            </div>
+          }>
+            {activeRightPanel === 'global' ? (
+              <GlobalSummary pairs={pairs} t={t} />
+            ) : (
+              <ReportPanel 
+                pair={selectedPair} 
+                onGenerate={handleGenerateReport}
+                isGenerating={selectedPair?.status === 'analyzing'}
+                glossary={glossaryText}
+                t={t}
+              />
+            )}
+          </Suspense>
         </aside>
 
       </main>

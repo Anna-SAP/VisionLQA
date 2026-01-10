@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { UploadCloud, Loader2, FileArchive, Info } from 'lucide-react';
 import { ScreenshotPair, SupportedLocale } from '../types';
-import JSZip from 'jszip';
+// Remove static import of JSZip to improve initial load performance
+// import JSZip from 'jszip';
 
 interface UploadAreaProps {
   onPairsCreated: (pairs: ScreenshotPair[]) => void;
@@ -22,6 +23,9 @@ export const UploadArea: React.FC<UploadAreaProps> = ({ onPairsCreated, t }) => 
       const zips = files.filter(f => f.name.toLowerCase().endsWith('.zip'));
       const images = files.filter(f => f.type.startsWith('image/'));
       const newPairs: ScreenshotPair[] = [];
+
+      // Dynamic import: Only load JSZip when actually processing files
+      const JSZip = (await import('jszip')).default;
 
       // Helper to match pairs within map
       const createPairsFromMaps = (
