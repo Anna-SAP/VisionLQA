@@ -2,8 +2,10 @@ import React, { useState, useRef, useCallback, Suspense } from 'react';
 import { UploadArea } from './components/UploadArea';
 import { PairList } from './components/PairList';
 import { CompareView } from './components/CompareView';
+import { GlossaryManager } from './components/GlossaryManager';
 import { ScreenshotPair, LlmRequestPayload, BulkProcessingState, ScreenshotReport, AppLanguage } from './types';
 import { callTranslationQaLLM } from './services/llmService';
+import { generateReportHtml } from './services/reportGenerator';
 import { Layers, Activity, BookOpen, PanelLeftOpen, PanelLeftClose, PlayCircle, Globe, Loader2 } from 'lucide-react';
 import { LLM_DISPLAY_NAME, APP_VERSION, UI_TEXT } from './constants';
 import JSZip from 'jszip';
@@ -304,7 +306,8 @@ const App: React.FC = () => {
 
     const zip = new JSZip();
     for (const pair of completedPairs) {
-        const html = generateReportHtml(pair.report!, pair.fileName, pair.targetLanguage, t);
+        // Use the shared generator function
+        const html = generateReportHtml(pair.report!, pair.fileName, pair.targetLanguage);
         const qualityPrefix = pair.report!.overall.qualityLevel;
         zip.file(`${qualityPrefix}_${pair.fileName}.html`, html);
         zip.file(`${qualityPrefix}_${pair.fileName}.json`, JSON.stringify(pair.report, null, 2));
@@ -412,16 +415,16 @@ const App: React.FC = () => {
             <UploadArea onPairsCreated={handlePairsCreated} t={t} />
           </div>
           
-          <div className="p-4 border-b border-slate-100 bg-slate-50">
-            <label className="flex items-center text-xs font-bold text-slate-500 mb-2">
-              <BookOpen className="w-3 h-3 mr-1" />
-              {t.projectContext}
-            </label>
-            <textarea 
-              className="w-full text-xs p-2 border border-slate-200 rounded h-20 focus:ring-2 focus:ring-accent focus:border-transparent resize-none"
-              placeholder="e.g. Site = Standort..."
-              value={glossaryText}
-              onChange={(e) => setGlossaryText(e.target.value)}
+          <div className="p-0 border-b border-slate-100 bg-slate-50">
+            <div className="flex items-center text-xs font-bold text-slate-500 p-4 pb-2">
+               <BookOpen className="w-3 h-3 mr-1" />
+               {t.projectContext}
+            </div>
+            
+            <GlossaryManager 
+              currentGlossary={glossaryText}
+              onUpdate={setGlossaryText}
+              t={t}
             />
           </div>
 
@@ -478,67 +481,3 @@ const App: React.FC = () => {
 };
 
 export default App;
-
-// Helper: Updated to accept UI Translations
-const generateReportHtml = (report: ScreenshotReport, fileName: string, targetLang: string, t: any) => {
-    if (!report || !report.overall || !report.summary || !report.issues) {
-      return `<html><body><h1>Error</h1></body></html>`;
-    }
-
-    const { overall, issues, summary } = report;
-    const date = new Date().toLocaleString();
-    const targetLangLabel = targetLang;
-
-    const categoryCounts: Record<string, number> = {};
-    issues.forEach(issue => {
-      categoryCounts[issue.issueCategory] = (categoryCounts[issue.issueCategory] || 0) + 1;
-    });
-
-    const styles = `
-      body { font-family: sans-serif; color: #334155; line-height: 1.5; max-width: 900px; margin: 0 auto; padding: 40px; background: #f8fafc; }
-      .header { border-bottom: 1px solid #e2e8f0; padding-bottom: 20px; margin-bottom: 30px; display: flex; justify-content: space-between; }
-      .title { font-size: 24px; font-weight: bold; color: #0f172a; }
-      .meta { color: #64748b; font-size: 14px; }
-      .section { background: white; padding: 24px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 24px; }
-      .section-title { font-size: 18px; font-weight: 600; margin-bottom: 16px; border-bottom: 2px solid #f1f5f9; padding-bottom: 8px; }
-      .issue-card { border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; margin-bottom: 16px; border-left-width: 5px; background: white; }
-      .issue-critical { border-left-color: #ef4444; } .issue-major { border-left-color: #f97316; } .issue-minor { border-left-color: #eab308; }
-      .text-box { background: #f8fafc; padding: 12px; border-radius: 6px; border: 1px solid #e2e8f0; margin-top: 8px; }
-    `;
-
-    const issueHtml = issues.map(issue => `
-      <div class="issue-card issue-${issue.severity.toLowerCase()}">
-        <div><strong>${issue.id}</strong> | ${issue.issueCategory} | <span style="color:red">${issue.severity}</span></div>
-        <p>${issue.description}</p>
-        <div class="text-box"><strong>Source:</strong> ${issue.sourceText}</div>
-        <div class="text-box"><strong>Current:</strong> ${issue.targetText}</div>
-        <div style="margin-top:8px; color:green;"><strong>Suggestion:</strong> ${issue.suggestionsTarget.join(', ')}</div>
-      </div>
-    `).join('');
-
-    return `
-      <!DOCTYPE html>
-      <html lang="en">
-        <head><meta charset="utf-8"><title>LQA - ${fileName}</title><style>${styles}</style></head>
-        <body>
-          <div class="header">
-            <div><div class="title">Vision LQA Report</div><div>File: ${fileName}</div></div>
-            <div class="meta">${date}</div>
-          </div>
-          <div class="section">
-            <div class="section-title">Summary</div>
-            <p>${overall.mainProblemsSummary}</p>
-            <div>Quality: <strong>${overall.qualityLevel}</strong> | Issues: ${issues.length}</div>
-          </div>
-          <div class="section">
-             <div class="section-title">Optimization Advice</div>
-             <p>${summary.optimizationAdvice}</p>
-          </div>
-          <div class="section">
-            <div class="section-title">Issues</div>
-            ${issueHtml}
-          </div>
-        </body>
-      </html>
-    `;
-};

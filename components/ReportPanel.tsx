@@ -3,6 +3,7 @@ import { ScreenshotPair, QaIssue, ScreenshotReport } from '../types';
 import { Button } from './Button';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from 'recharts';
 import { AlertTriangle, AlertOctagon, Info, Download, RefreshCw, AlertCircle, FileText } from 'lucide-react';
+import { generateReportHtml } from '../services/reportGenerator';
 
 interface ReportPanelProps {
   pair: ScreenshotPair | null;
@@ -87,8 +88,8 @@ export const ReportPanel: React.FC<ReportPanelProps> = ({ pair, onGenerate, isGe
   };
 
   const downloadHtml = () => {
-    // Generate simple HTML blob for immediate download using current translation
-    const htmlContent = `<html><body><h1>LQA Report: ${pair.fileName}</h1><p>Quality: ${report.overall.qualityLevel}</p><p>${report.overall.mainProblemsSummary}</p></body></html>`;
+    // Use shared generator to ensure full content
+    const htmlContent = generateReportHtml(report, pair.fileName, targetLangLabel);
     const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const downloadAnchorNode = document.createElement('a');

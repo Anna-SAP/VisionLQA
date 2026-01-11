@@ -2,7 +2,7 @@ import { SupportedLocale, AppLanguage } from "./types";
 
 export const LLM_MODEL_ID = 'gemini-3-flash-preview';
 export const LLM_DISPLAY_NAME = 'Gemini 3 Flash';
-export const APP_VERSION = 'v1.3.0';
+export const APP_VERSION = 'v1.4.1';
 
 // UI Translations
 export const UI_TEXT = {
@@ -46,10 +46,29 @@ export const UI_TEXT = {
     complete: "分析完成",
     success: "成功",
     failed: "失败",
+    failures: "失败原因",
     downloadZip: "下载全部 (ZIP)",
     downloadCsv: "汇总表 (CSV)",
     close: "关闭窗口",
-    langName: "简体中文"
+    langName: "简体中文",
+    // Glossary Manager
+    glossary: {
+      tabManual: "手动输入",
+      tabImport: "文件导入",
+      dragDrop: "点击或拖拽上传术语表",
+      formats: "支持 .xlsx, .csv (最大 50MB)",
+      parsing: "解析中...",
+      loadDefault: "加载预置术语表",
+      defaultDe: "加载 DE-DE 标准术语",
+      defaultFr: "加载 FR-FR 标准术语",
+      history: "历史记录",
+      preview: "预览 (前10条)",
+      totalTerms: "总术语数",
+      clear: "清空",
+      errorFormat: "文件格式错误或缺少必要的列 (Source/Target)",
+      apply: "应用",
+      applied: "已应用"
+    }
   },
   en: {
     title: "Vision LQA Pro",
@@ -91,10 +110,29 @@ export const UI_TEXT = {
     complete: "Analysis Complete",
     success: "Success",
     failed: "Failed",
+    failures: "Failure Reasons",
     downloadZip: "Download All (ZIP)",
     downloadCsv: "Summary (CSV)",
     close: "Close Window",
-    langName: "English"
+    langName: "English",
+    // Glossary Manager
+    glossary: {
+      tabManual: "Manual Input",
+      tabImport: "File Import",
+      dragDrop: "Click or drag to upload glossary",
+      formats: "Supports .xlsx, .csv (Max 50MB)",
+      parsing: "Parsing...",
+      loadDefault: "Load Default Glossary",
+      defaultDe: "Load DE-DE Standard",
+      defaultFr: "Load FR-FR Standard",
+      history: "History",
+      preview: "Preview (Top 10)",
+      totalTerms: "Total Terms",
+      clear: "Clear",
+      errorFormat: "Invalid format or missing required columns (Source/Target)",
+      apply: "Apply",
+      applied: "Applied"
+    }
   }
 };
 

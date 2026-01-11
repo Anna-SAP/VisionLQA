@@ -17,7 +17,7 @@ export const GlobalSummary: React.FC<GlobalSummaryProps> = ({ pairs, t }) => {
     const categoryCounts: Record<string, number> = {};
 
     analyzed.forEach(p => {
-      if (p.report) {
+      if (p.report && p.report.issues) {
         critical += p.report.summary.severeCount;
         major += p.report.summary.majorCount;
         minor += p.report.summary.minorCount;

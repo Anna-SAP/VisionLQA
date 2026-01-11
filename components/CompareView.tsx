@@ -102,7 +102,7 @@ export const CompareView: React.FC<CompareViewProps> = ({ pair, t }) => {
               <div className="absolute inset-0 border-2 border-transparent group-hover:border-purple-400 pointer-events-none transition-colors"></div>
               
               {/* Overlay bounding boxes if report exists */}
-              {pair.report?.issues.map(issue => (
+              {pair.report?.issues?.map(issue => (
                 issue.boundingBox && (
                   <div 
                     key={issue.id}

@@ -112,12 +112,18 @@ export const BulkRunModal: React.FC<BulkRunModalProps> = ({
 
               {/* Error Log */}
               {state.errors.length > 0 && (
-                <div className="max-h-32 overflow-y-auto border border-red-100 bg-red-50/30 rounded p-2 text-xs">
-                  <p className="font-bold text-red-800 mb-1">Failures:</p>
-                  <ul className="space-y-1">
+                <div className="max-h-40 overflow-y-auto border border-red-200 bg-red-50 rounded-lg p-3 text-xs custom-scrollbar">
+                  <p className="font-bold text-red-800 mb-2 flex items-center border-b border-red-200 pb-1">
+                     <AlertTriangle className="w-3.5 h-3.5 mr-1.5" />
+                     {t.failures}:
+                  </p>
+                  <ul className="space-y-2">
                     {state.errors.map((err, idx) => (
-                      <li key={idx} className="text-red-700 truncate">
-                        • {err.fileName}: {err.error}
+                      <li key={idx} className="text-red-700 bg-red-100/50 p-2 rounded">
+                        <div className="font-semibold break-all mb-0.5">{err.fileName}</div>
+                        <div className="text-red-600/80 break-words leading-tight pl-2 border-l-2 border-red-200">
+                          {err.error}
+                        </div>
                       </li>
                     ))}
                   </ul>
