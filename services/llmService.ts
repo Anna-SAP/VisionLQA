@@ -90,7 +90,7 @@ export async function callTranslationQaLLM(payload: LlmRequestPayload): Promise<
 
       Identify specific issues regarding:
       1. Layout (Truncation, Overlap, Misalignment)
-      2. Translation Accuracy (Mistranslations, Untranslated text)
+      2. Translation Accuracy (Mistranslations)
       3. Terminology Consistency
       4. Formatting (Dates, Numbers)
       

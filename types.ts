@@ -1,3 +1,4 @@
+
 // Data Models
 
 export type AppLanguage = 'zh' | 'en';
@@ -20,7 +21,7 @@ export interface QaIssue {
     width: number;
     height: number;
   };
-  issueCategory: 'Layout' | 'Mistranslation' | 'Untranslated' | 'Terminology' | 'Formatting' | 'Grammar' | 'Style' | 'Other';
+  issueCategory: 'Layout' | 'Mistranslation' | 'Terminology' | 'Formatting' | 'Grammar' | 'Style' | 'Other';
   severity: 'Critical' | 'Major' | 'Minor';
   sourceText: string;
   targetText: string;

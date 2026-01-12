@@ -2,7 +2,7 @@ import { SupportedLocale, AppLanguage } from "./types";
 
 export const LLM_MODEL_ID = 'gemini-3-flash-preview';
 export const LLM_DISPLAY_NAME = 'Gemini 3 Flash';
-export const APP_VERSION = 'v1.4.4';
+export const APP_VERSION = 'v1.4.5';
 
 // UI Translations
 export const UI_TEXT = {
@@ -160,8 +160,8 @@ export const getAnalysisSystemPrompt = (targetLang: SupportedLocale, reportLang:
 
 3. **第三步：仅检查有效区域**
    - 只对源图中**完全可见、未被遮挡**的区域对应的目标图内容进行 LQA 检查。
-   - **严禁**报告任何位于遮罩区域内的翻译缺失、布局错误或术语问题。
-   - 示例：如果源图顶部导航栏被灰色块遮盖，而目标图显示了导航栏，**请完全忽略导航栏中的任何问题**（即使有未翻译的文本）。
+   - **严禁**报告任何位于遮罩区域内的翻译问题、布局错误或术语问题。
+   - 示例：如果源图顶部导航栏被灰色块遮盖，而目标图显示了导航栏，**请完全忽略导航栏中的任何问题**（即使存在明显的翻译错误）。
 `;
 
   const maskInstructionEn = `
@@ -176,8 +176,8 @@ export const getAnalysisSystemPrompt = (targetLang: SupportedLocale, reportLang:
 
 3. **Step 3: Inspect Only Valid Areas**
    - Perform LQA checks ONLY on content that is **VISIBLY UNMASKED** in the Source Image.
-   - **DO NOT** report any missing translations, layout issues, or terminology errors located within the masked zones.
-   - Example: If the top header is grayed out in Source, but visible in Target, **IGNORE the header completely** (even if it has untranslated text).
+   - **DO NOT** report any mistranslations, layout issues, or terminology errors located within the masked zones.
+   - Example: If the top header is grayed out in Source, but visible in Target, **IGNORE the header completely** (even if it has mistranslation).
 `;
     
   const taskDesc = isZh
@@ -186,20 +186,25 @@ export const getAnalysisSystemPrompt = (targetLang: SupportedLocale, reportLang:
 ${maskInstructionZh}
 
 你需要从两个角度检查**有效区域**内的内容：
-1. 语言层面：翻译准确性、术语、语法、语气、文化与格式（日期/数字/单位）；
-2. 视觉层面：${langName}文本是否因为长度增加而导致 截断（Truncation）、溢出、重叠、换行异常 等 UI 问题。`
+1. 语言层面：翻译准确性（不包含未翻译的内容）、术语、语法、语气、文化与格式（日期/数字/单位）；
+2. 视觉层面：${langName}文本是否因为长度增加而导致 截断（Truncation）、溢出、重叠、换行异常 等 UI 问题。
+
+注意：请忽略所有“未翻译（Untranslated）”的文本，这部分由其他团队负责。`
     : `Task Objective:
 This is a UI Screenshot Testing task.
 ${maskInstructionEn}
 
 You need to inspect the **VALID AREAS** from two perspectives:
-1. Linguistic: Translation accuracy, terminology, grammar, tone, culture, and formatting (dates/numbers/units).
-2. Visual: Check for UI issues caused by text expansion in ${langName}, such as Truncation, Overflow, Overlap, or abnormal line breaks.`;
+1. Linguistic: Translation accuracy (excluding untranslated text), terminology, grammar, tone, culture, and formatting (dates/numbers/units).
+2. Visual: Check for UI issues caused by text expansion in ${langName}, such as Truncation, Overflow, Overlap, or abnormal line breaks.
+
+NOTE: Please IGNORE all "Untranslated" text, as this is handled by another team.`;
 
   const outputInstruction = isZh
     ? `请严格按以下 JSON 格式输出（所有描述性文字请使用简体中文）：`
     : `Please strictly output the following JSON format (All descriptive text must be in English):`;
 
+  // Removed "Untranslated" from issueCategory enum
   const jsonSchema = `{
   "screenshotId": "string",
   "overall": {
@@ -212,7 +217,7 @@ You need to inspect the **VALID AREAS** from two perspectives:
     {
       "id": "Issue-XX",
       "location": "${isZh ? '问题位置描述' : 'Location description'}",
-      "issueCategory": "Layout" | "Mistranslation" | "Untranslated" | "Terminology" | "Formatting" | "Grammar" | "Style" | "Other",
+      "issueCategory": "Layout" | "Mistranslation" | "Terminology" | "Formatting" | "Grammar" | "Style" | "Other",
       "severity": "Critical" | "Major" | "Minor",
       "sourceText": "en text",
       "targetText": "${langCode} text",
