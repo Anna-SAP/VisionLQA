@@ -1,4 +1,86 @@
-import { ScreenshotReport } from '../types';
+import { ScreenshotReport, QaScores } from '../types';
+
+// Helper to generate SVG Radar Chart string
+const generateRadarSvg = (scores: QaScores): string => {
+    // Configuration
+    const width = 400;
+    const height = 300;
+    const cx = width / 2;
+    const cy = height / 2 + 10;
+    const radius = 90;
+    const maxScore = 5;
+    
+    // Data points order matching UI
+    const metrics = [
+      { key: 'accuracy', label: 'Accuracy' },
+      { key: 'terminology', label: 'Terms' },
+      { key: 'layout', label: 'Layout' },
+      { key: 'grammar', label: 'Grammar' },
+      { key: 'formatting', label: 'Format' },
+      { key: 'localizationTone', label: 'Tone' },
+    ];
+
+    const angleStep = (Math.PI * 2) / metrics.length;
+    
+    // Helper to calculate coordinates
+    // SVG coordinate system: 0 degrees is 3 o'clock. We want top (12 o'clock) to be start.
+    // So we subtract PI/2 (-90deg).
+    const getCoords = (value: number, index: number) => {
+        const angle = index * angleStep - Math.PI / 2;
+        const r = (value / maxScore) * radius;
+        return {
+            x: cx + r * Math.cos(angle),
+            y: cy + r * Math.sin(angle)
+        };
+    };
+
+    // Generate Grid Lines (Web)
+    const gridLevels = [1, 2, 3, 4, 5];
+    const gridSvg = gridLevels.map(level => {
+        const points = metrics.map((_, i) => {
+             const { x, y } = getCoords(level, i);
+             return `${x},${y}`;
+        }).join(' ');
+        return `<polygon points="${points}" fill="none" stroke="#e2e8f0" stroke-width="1" />`;
+    }).join('');
+
+    // Generate Axes and Labels
+    const axisSvg = metrics.map((m, i) => {
+        const start = { x: cx, y: cy };
+        const end = getCoords(5, i);
+        // Push labels out a bit
+        const labelR = radius + 25;
+        const angle = i * angleStep - Math.PI / 2;
+        const labelX = cx + labelR * Math.cos(angle);
+        const labelY = cy + labelR * Math.sin(angle);
+        
+        return `
+            <line x1="${start.x}" y1="${start.y}" x2="${end.x}" y2="${end.y}" stroke="#e2e8f0" stroke-width="1" />
+            <text x="${labelX}" y="${labelY}" text-anchor="middle" dominant-baseline="middle" font-size="12" fill="#64748b" font-family="sans-serif">${m.label}</text>
+        `;
+    }).join('');
+
+    // Generate Data Polygon
+    const dataPoints = metrics.map((m, i) => {
+        // @ts-ignore
+        const val = scores[m.key] || 0;
+        const { x, y } = getCoords(val, i);
+        return `${x},${y}`;
+    }).join(' ');
+
+    return `
+        <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">
+            <!-- Background -->
+            <rect width="100%" height="100%" fill="white" />
+            <!-- Grid -->
+            ${gridSvg}
+            <!-- Axes -->
+            ${axisSvg}
+            <!-- Data -->
+            <polygon points="${dataPoints}" fill="#2563eb" fill-opacity="0.4" stroke="#2563eb" stroke-width="2" />
+        </svg>
+    `;
+};
 
 export const generateReportHtml = (report: ScreenshotReport, fileName: string, targetLang: string) => {
     if (!report || !report.overall || !report.summary || !report.issues) {
@@ -7,6 +89,7 @@ export const generateReportHtml = (report: ScreenshotReport, fileName: string, t
 
     const { overall, issues, summary } = report;
     const date = new Date().toLocaleString();
+    const radarSvg = generateRadarSvg(overall.scores);
 
     const styles = `
       body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: #334155; line-height: 1.6; max-width: 960px; margin: 0 auto; padding: 40px; background: #f8fafc; }
@@ -53,6 +136,9 @@ export const generateReportHtml = (report: ScreenshotReport, fileName: string, t
       .suggestion-box { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; padding: 12px; }
       .suggestion-label { color: #15803d; font-size: 11px; font-weight: 700; text-transform: uppercase; margin-bottom: 4px; display: block; }
       .suggestion-content { color: #166534; font-weight: 500; font-size: 14px; }
+      
+      .overview-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 24px; margin-bottom: 24px; }
+      .chart-container { display: flex; justify-content: center; align-items: center; background: #fff; }
     `;
 
     const getQualityBadgeClass = (level: string) => {
@@ -116,29 +202,38 @@ export const generateReportHtml = (report: ScreenshotReport, fileName: string, t
             </div>
           </div>
 
-          <div class="stat-grid">
-            <div class="stat-box">
-                <div class="stat-label">Total Issues</div>
-                <div class="stat-value">${issues.length}</div>
-            </div>
-            <div class="stat-box">
-                <div class="stat-label">Critical / Major</div>
-                <div class="stat-value" style="color:#dc2626">${summary.severeCount + summary.majorCount}</div>
-            </div>
-             <div class="stat-box">
-                <div class="stat-label">Accuracy Score</div>
-                <div class="stat-value" style="color:#2563eb">${overall.scores?.accuracy || 0}<span style="font-size:14px;color:#94a3b8;font-weight:400">/5</span></div>
+          <div class="section">
+            <div class="section-title">Overview</div>
+            <div class="overview-grid">
+                <div>
+                   <div class="stat-grid">
+                        <div class="stat-box">
+                            <div class="stat-label">Total Issues</div>
+                            <div class="stat-value">${issues.length}</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-label">Critical / Major</div>
+                            <div class="stat-value" style="color:#dc2626">${summary.severeCount + summary.majorCount}</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-label">Accuracy Score</div>
+                            <div class="stat-value" style="color:#2563eb">${overall.scores?.accuracy || 0}<span style="font-size:14px;color:#94a3b8;font-weight:400">/5</span></div>
+                        </div>
+                   </div>
+                   <div class="text-box" style="margin-top: 10px;">
+                      <span class="text-label">Main Problems</span>
+                      <p style="font-size: 14px; color: #475569; margin: 0;">${overall.mainProblemsSummary}</p>
+                   </div>
+                </div>
+                <div class="chart-container">
+                    ${radarSvg}
+                </div>
             </div>
           </div>
 
           <div class="section">
             <div class="section-title">Scene Description</div>
             <div class="section-content">${overall.sceneDescription}</div>
-          </div>
-
-          <div class="section">
-            <div class="section-title">Main Problems Summary</div>
-            <div class="section-content">${overall.mainProblemsSummary}</div>
           </div>
 
           <div class="section">

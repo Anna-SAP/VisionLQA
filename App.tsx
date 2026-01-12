@@ -6,7 +6,7 @@ import { GlossaryManager } from './components/GlossaryManager';
 import { ScreenshotPair, LlmRequestPayload, BulkProcessingState, ScreenshotReport, AppLanguage } from './types';
 import { callTranslationQaLLM } from './services/llmService';
 import { generateReportHtml } from './services/reportGenerator';
-import { Layers, Activity, BookOpen, PanelLeftOpen, PanelLeftClose, PlayCircle, Globe, Loader2 } from 'lucide-react';
+import { Layers, Activity, BookOpen, PanelLeftOpen, PanelLeftClose, PlayCircle, Globe, Loader2, RotateCcw } from 'lucide-react';
 import { LLM_DISPLAY_NAME, APP_VERSION, UI_TEXT } from './constants';
 import JSZip from 'jszip';
 
@@ -48,6 +48,26 @@ const App: React.FC = () => {
     const newLang = appLanguage === 'zh' ? 'en' : 'zh';
     setAppLanguage(newLang);
     localStorage.setItem('vision_lqa_lang', newLang);
+  };
+
+  // Start Over Logic
+  const handleStartOver = () => {
+    if (pairs.length > 0) {
+        if (!window.confirm("Are you sure you want to start over? This will clear all current screenshots and reports.")) {
+            return;
+        }
+    }
+    setPairs([]);
+    setSelectedPairId(null);
+    setBulkState({
+        isProcessing: false,
+        total: 0,
+        completed: 0,
+        success: 0,
+        failed: 0,
+        errors: [],
+        isComplete: false
+    });
   };
 
   // Demo Data Loading
@@ -105,9 +125,6 @@ const App: React.FC = () => {
     setGlossaryText("Site = Standort\nExtension = Nebenstelle");
     setActiveRightPanel('report');
   }, [appLanguage]);
-
-  // Performance: Removed automatic loadDemoData effect to save initial bandwidth.
-  // User can manually load demo data via the button.
 
   const handlePairsCreated = (newPairs: ScreenshotPair[]) => {
     setPairs(prev => [...prev, ...newPairs]);
@@ -354,8 +371,21 @@ const App: React.FC = () => {
           <div className="bg-accent p-1.5 rounded text-white">
             <Layers className="w-5 h-5" />
           </div>
-          <h1 className="text-lg font-bold tracking-tight text-slate-800">{t.title}</h1>
+          <h1 className="text-lg font-bold tracking-tight text-slate-800 hidden md:block">{t.title}</h1>
+          <h1 className="text-lg font-bold tracking-tight text-slate-800 md:hidden">Vision LQA</h1>
+          
+          <div className="h-5 w-px bg-slate-200 mx-1"></div>
+          
+          <button 
+             onClick={handleStartOver}
+             className="flex items-center space-x-1.5 bg-white hover:bg-red-50 text-slate-500 hover:text-red-600 px-2 py-1.5 rounded text-xs font-medium transition-colors border border-slate-200"
+             title={t.startOver}
+           >
+             <RotateCcw className="w-3.5 h-3.5" />
+             <span>{t.startOver}</span>
+           </button>
         </div>
+
         <div className="flex items-center space-x-4">
            
            <div className="hidden md:flex flex-col items-end mr-2">

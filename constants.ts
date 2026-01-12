@@ -2,7 +2,7 @@ import { SupportedLocale, AppLanguage } from "./types";
 
 export const LLM_MODEL_ID = 'gemini-3-flash-preview';
 export const LLM_DISPLAY_NAME = 'Gemini 3 Flash';
-export const APP_VERSION = 'v1.4.1';
+export const APP_VERSION = 'v1.4.2';
 
 // UI Translations
 export const UI_TEXT = {
@@ -18,6 +18,7 @@ export const UI_TEXT = {
     globalStats: "全局统计",
     runBulk: "批量运行",
     loadDemo: "加载演示数据",
+    startOver: "重新开始",
     source: "源语言",
     target: "目标语言",
     readyToAnalyze: "准备分析",
@@ -82,6 +83,7 @@ export const UI_TEXT = {
     globalStats: "Global Stats",
     runBulk: "Run Bulk",
     loadDemo: "Load Demo Data",
+    startOver: "Start Over",
     source: "Source",
     target: "Target",
     readyToAnalyze: "Ready to Analyze",
