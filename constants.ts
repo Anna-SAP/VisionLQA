@@ -2,7 +2,7 @@ import { SupportedLocale, AppLanguage } from "./types";
 
 export const LLM_MODEL_ID = 'gemini-3-flash-preview';
 export const LLM_DISPLAY_NAME = 'Gemini 3 Flash';
-export const APP_VERSION = 'v1.4.2';
+export const APP_VERSION = 'v1.4.4';
 
 // UI Translations
 export const UI_TEXT = {
@@ -145,16 +145,54 @@ export const getAnalysisSystemPrompt = (targetLang: SupportedLocale, reportLang:
   // Define instructions based on report language
   const isZh = reportLang === 'zh';
   const roleDesc = isZh 
-    ? `你是一名拥有 10 年经验的${langName}本地化质量保证专家（LQA Specialist，母语为 ${langCode}）。`
-    : `You are a Localization Quality Assurance (LQA) Specialist with 10 years of experience in ${langName} (Native in ${langCode}).`;
+    ? `你是一名专业的${langName}本地化质量保证专家（LQA Specialist，母语为 ${langCode}）。你具备极强的视觉空间感知能力，能够严格遵循“遮罩过滤规则”。`
+    : `You are an expert Localization Quality Assurance (LQA) Specialist in ${langName} (Native in ${langCode}). You possess strong visual-spatial perception and strictly adhere to "Mask Filtering Rules".`;
+
+  const maskInstructionZh = `
+*** 核心规则：严格的遮罩过滤 (STRICT MASK FILTERING) ***
+1. **第一步：分析源图 (Image 1, en-US)**
+   - 寻找图中被 **灰色/深色矩形色块 (Gray/Dark Blocks)** 覆盖的区域。
+   - 这些区域是“非检查区 (Exclusion Zones)”，通常覆盖了顶部导航栏、侧边栏或敏感数据。
+
+2. **第二步：映射到目标图 (Image 2, ${langCode})**
+   - 将源图中的“非检查区”坐标在空间上映射到目标图上。
+   - 即使目标图在这些位置显示了清晰的文字、按钮或 UI 控件，也必须视其为**不存在**。
+
+3. **第三步：仅检查有效区域**
+   - 只对源图中**完全可见、未被遮挡**的区域对应的目标图内容进行 LQA 检查。
+   - **严禁**报告任何位于遮罩区域内的翻译缺失、布局错误或术语问题。
+   - 示例：如果源图顶部导航栏被灰色块遮盖，而目标图显示了导航栏，**请完全忽略导航栏中的任何问题**（即使有未翻译的文本）。
+`;
+
+  const maskInstructionEn = `
+*** CORE RULE: STRICT MASK FILTERING ***
+1. **Step 1: Analyze Source Image (Image 1, en-US)**
+   - Identify areas covered by **SOLID GRAY/DARK BLOCKS**.
+   - These are "Exclusion Zones", usually covering headers, sidebars, or sensitive data.
+
+2. **Step 2: Map to Target Image (Image 2, ${langCode})**
+   - Project these Exclusion Zones onto the Target Image coordinates.
+   - Even if the Target Image shows clear text, buttons, or UI controls in these zones, treat them as **NON-EXISTENT**.
+
+3. **Step 3: Inspect Only Valid Areas**
+   - Perform LQA checks ONLY on content that is **VISIBLY UNMASKED** in the Source Image.
+   - **DO NOT** report any missing translations, layout issues, or terminology errors located within the masked zones.
+   - Example: If the top header is grayed out in Source, but visible in Target, **IGNORE the header completely** (even if it has untranslated text).
+`;
     
   const taskDesc = isZh
     ? `任务目标：
-这是一次 UI 截图测试。你需要从两个角度检查目标界面（${langCode}）：
+这是一次 UI 截图测试。
+${maskInstructionZh}
+
+你需要从两个角度检查**有效区域**内的内容：
 1. 语言层面：翻译准确性、术语、语法、语气、文化与格式（日期/数字/单位）；
 2. 视觉层面：${langName}文本是否因为长度增加而导致 截断（Truncation）、溢出、重叠、换行异常 等 UI 问题。`
     : `Task Objective:
-This is a UI Screenshot Testing task. You need to inspect the target interface (${langCode}) from two perspectives:
+This is a UI Screenshot Testing task.
+${maskInstructionEn}
+
+You need to inspect the **VALID AREAS** from two perspectives:
 1. Linguistic: Translation accuracy, terminology, grammar, tone, culture, and formatting (dates/numbers/units).
 2. Visual: Check for UI issues caused by text expansion in ${langName}, such as Truncation, Overflow, Overlap, or abnormal line breaks.`;
 
@@ -167,7 +205,7 @@ This is a UI Screenshot Testing task. You need to inspect the target interface (
   "overall": {
     "qualityLevel": "Critical" | "Poor" | "Average" | "Good" | "Perfect",
     "scores": { "accuracy": 0, "terminology": 0, "layout": 0, "grammar": 0, "formatting": 0, "localizationTone": 0 },
-    "sceneDescription": "${isZh ? '简体中文场景描述' : 'Scene description in English'}",
+    "sceneDescription": "${isZh ? '简体中文场景描述（需注明：已忽略遮罩区域）' : 'Scene description in English (Note: Masked areas ignored)'}",
     "mainProblemsSummary": "${isZh ? '简体中文问题总结' : 'Summary of main problems in English'}"
   },
   "issues": [
