@@ -95,7 +95,7 @@ export const ReportPanel: React.FC<ReportPanelProps> = ({ pair, onGenerate, isGe
     const downloadAnchorNode = document.createElement('a');
     downloadAnchorNode.setAttribute("href", url);
     const qualityPrefix = report.overall.qualityLevel;
-    downloadAnchorNode.setAttribute("download", `${qualityPrefix}_${pair.fileName}.html`);
+    downloadAnchorNode.setAttribute("download", `${qualityPrefix}_${targetLangLabel}_${pair.fileName}.html`);
     document.body.appendChild(downloadAnchorNode);
     downloadAnchorNode.click();
     downloadAnchorNode.remove();

@@ -326,8 +326,8 @@ const App: React.FC = () => {
         // Use the shared generator function
         const html = generateReportHtml(pair.report!, pair.fileName, pair.targetLanguage);
         const qualityPrefix = pair.report!.overall.qualityLevel;
-        zip.file(`${qualityPrefix}_${pair.fileName}.html`, html);
-        zip.file(`${qualityPrefix}_${pair.fileName}.json`, JSON.stringify(pair.report, null, 2));
+        zip.file(`${qualityPrefix}_${pair.targetLanguage}_${pair.fileName}.html`, html);
+        zip.file(`${qualityPrefix}_${pair.targetLanguage}_${pair.fileName}.json`, JSON.stringify(pair.report, null, 2));
     }
 
     const content = await zip.generateAsync({ type: "blob" });
