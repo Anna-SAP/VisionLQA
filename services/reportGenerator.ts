@@ -125,6 +125,8 @@ export const generateReportHtml = (report: ScreenshotReport, fileName: string, t
       .issue-sev { font-size: 12px; font-weight: 700; text-transform: uppercase; }
       .sev-critical { color: #dc2626; } .sev-major { color: #ea580c; } .sev-minor { color: #ca8a04; }
 
+      .issue-loc { display: inline-block; background-color: #fffbeb; color: #92400e; border: 1px solid #fcd34d; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; margin-bottom: 12px; font-family: monospace; }
+
       .issue-desc { margin-bottom: 16px; font-size: 15px; color: #334155; }
       
       .comparison-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
@@ -161,6 +163,7 @@ export const generateReportHtml = (report: ScreenshotReport, fileName: string, t
             </div>
             <span class="issue-sev sev-${issue.severity.toLowerCase()}">${issue.severity}</span>
         </div>
+        ${issue.location ? `<div class="issue-loc">${issue.location}</div>` : ''}
         <p class="issue-desc">${issue.description}</p>
         <div class="comparison-grid">
             <div class="text-box">
