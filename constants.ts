@@ -68,7 +68,13 @@ export const UI_TEXT = {
       clear: "清空",
       errorFormat: "文件格式错误或缺少必要的列 (Source/Target)",
       apply: "应用",
-      applied: "已应用"
+      applied: "已应用",
+      modeLabel: "上传模式",
+      modeReplace: "覆盖模式",
+      modeAppend: "追加模式",
+      filesLoaded: "已加载文件",
+      mergedTotal: "合并后共计",
+      removeFile: "移除此文件"
     }
   },
   en: {
@@ -133,7 +139,13 @@ export const UI_TEXT = {
       clear: "Clear",
       errorFormat: "Invalid format or missing required columns (Source/Target)",
       apply: "Apply",
-      applied: "Applied"
+      applied: "Applied",
+      modeLabel: "Upload Mode",
+      modeReplace: "Replace Mode",
+      modeAppend: "Append Mode",
+      filesLoaded: "Loaded Files",
+      mergedTotal: "Merged Total",
+      removeFile: "Remove file"
     }
   }
 };
