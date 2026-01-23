@@ -2,7 +2,7 @@ import { SupportedLocale, AppLanguage } from "./types";
 
 export const LLM_MODEL_ID = 'gemini-3-flash-preview';
 export const LLM_DISPLAY_NAME = 'Gemini 3 Flash';
-export const APP_VERSION = 'v1.4.5';
+export const APP_VERSION = 'v1.4.6'; // Bump version
 
 // UI Translations
 export const UI_TEXT = {
@@ -15,6 +15,8 @@ export const UI_TEXT = {
     processing: "处理文件中...",
     projectContext: "项目上下文 / 术语表",
     screenshotsList: "截图列表",
+    clearList: "清空列表", 
+    clearContext: "重置上下文", 
     globalStats: "全局统计",
     runBulk: "批量运行",
     loadDemo: "加载演示数据",
@@ -52,6 +54,8 @@ export const UI_TEXT = {
     downloadCsv: "汇总表 (CSV)",
     close: "关闭窗口",
     langName: "简体中文",
+    langMismatchTitle: "语种不匹配警告",
+    langMismatchMsg: "检测到新上传的图片语言为 {zipLang}，但当前已加载的术语表似乎是 {glossaryLang}。\n\n是否继续使用当前术语表？",
     // Glossary Manager
     glossary: {
       tabManual: "手动输入",
@@ -74,7 +78,8 @@ export const UI_TEXT = {
       modeAppend: "追加模式",
       filesLoaded: "已加载文件",
       mergedTotal: "合并后共计",
-      removeFile: "移除此文件"
+      removeFile: "移除此文件",
+      resetAll: "重置所有上下文" 
     }
   },
   en: {
@@ -86,6 +91,8 @@ export const UI_TEXT = {
     processing: "Processing files...",
     projectContext: "Project Context / Glossary",
     screenshotsList: "Screenshots",
+    clearList: "Clear List", 
+    clearContext: "Reset Context", 
     globalStats: "Global Stats",
     runBulk: "Run Bulk",
     loadDemo: "Load Demo Data",
@@ -123,6 +130,8 @@ export const UI_TEXT = {
     downloadCsv: "Summary (CSV)",
     close: "Close Window",
     langName: "English",
+    langMismatchTitle: "Language Mismatch Warning",
+    langMismatchMsg: "Detected new images are {zipLang}, but the loaded glossary appears to be {glossaryLang}.\n\nDo you want to continue with the current glossary?",
     // Glossary Manager
     glossary: {
       tabManual: "Manual Input",
@@ -145,7 +154,8 @@ export const UI_TEXT = {
       modeAppend: "Append Mode",
       filesLoaded: "Loaded Files",
       mergedTotal: "Merged Total",
-      removeFile: "Remove file"
+      removeFile: "Remove file",
+      resetAll: "Reset All Context" 
     }
   }
 };
@@ -154,7 +164,6 @@ export const getAnalysisSystemPrompt = (targetLang: SupportedLocale, reportLang:
   const langName = targetLang === 'fr-FR' ? 'French (Français)' : 'German (Deutsch)';
   const langCode = targetLang;
   
-  // Define instructions based on report language
   const isZh = reportLang === 'zh';
   const roleDesc = isZh 
     ? `你是一名专业的${langName}本地化质量保证专家（LQA Specialist，母语为 ${langCode}）。你具备极强的视觉空间感知能力，能够严格遵循“遮罩过滤规则”。`
@@ -212,39 +221,9 @@ You need to inspect the **VALID AREAS** from two perspectives:
 
 NOTE: Please IGNORE all "Untranslated" text, as this is handled by another team.`;
 
-  const outputInstruction = isZh
-    ? `请严格按以下 JSON 格式输出（所有描述性文字请使用简体中文）：`
-    : `Please strictly output the following JSON format (All descriptive text must be in English):`;
-
-  // Removed "Untranslated" from issueCategory enum
-  const jsonSchema = `{
-  "screenshotId": "string",
-  "overall": {
-    "qualityLevel": "Critical" | "Poor" | "Average" | "Good" | "Perfect",
-    "scores": { "accuracy": 0, "terminology": 0, "layout": 0, "grammar": 0, "formatting": 0, "localizationTone": 0 },
-    "sceneDescription": "${isZh ? '简体中文场景描述（需注明：已忽略遮罩区域）' : 'Scene description in English (Note: Masked areas ignored)'}",
-    "mainProblemsSummary": "${isZh ? '简体中文问题总结' : 'Summary of main problems in English'}"
-  },
-  "issues": [
-    {
-      "id": "Issue-XX",
-      "location": "${isZh ? '问题位置描述' : 'Location description'}",
-      "issueCategory": "Layout" | "Mistranslation" | "Terminology" | "Formatting" | "Grammar" | "Style" | "Other",
-      "severity": "Critical" | "Major" | "Minor",
-      "sourceText": "en text",
-      "targetText": "${langCode} text",
-      "description": "${isZh ? '简体中文问题详情' : 'Detailed issue description in English'}",
-      "suggestionsTarget": ["${isZh ? '建议译文' : 'Suggested translation'}"]
-    }
-  ],
-  "summary": {
-    "severeCount": 0,
-    "majorCount": 0,
-    "minorCount": 0,
-    "optimizationAdvice": "${isZh ? '简体中文优化建议' : 'Optimization advice in English'}",
-    "termAdvice": "${isZh ? '简体中文术语建议' : 'Terminology advice in English'}"
-  }
-}`;
+  // NOTE: We no longer include the explicit JSON string template here because 
+  // we are using the `responseSchema` feature of the Gemini API which is more robust.
+  // We only describe the *content* requirements.
 
   return `
 ${roleDesc}
@@ -265,7 +244,6 @@ Evaluation Dimensions (0-5 score):
 - Locale Formatting
 - Localization & Tone
 
-${outputInstruction}
-${jsonSchema}
+Please verify every single issue found against the glossary and the visual evidence.
 `;
 };

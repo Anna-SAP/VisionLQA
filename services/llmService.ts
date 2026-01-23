@@ -1,4 +1,4 @@
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, Type, Schema } from "@google/genai";
 import { LlmRequestPayload, LlmResponse, ScreenshotReport } from '../types';
 import { getAnalysisSystemPrompt, LLM_MODEL_ID } from '../constants';
 
@@ -6,6 +6,86 @@ interface ProcessedImage {
   mimeType: string;
   data: string;
 }
+
+// Define the Strict Schema for Gemini API
+// This forces the model to output exactly this structure, eliminating missing fields.
+const qaIssueSchema: Schema = {
+  type: Type.OBJECT,
+  properties: {
+    id: { type: Type.STRING, description: "e.g., Issue-01" },
+    location: { type: Type.STRING, description: "Where the issue is located in the UI" },
+    issueCategory: { 
+      type: Type.STRING, 
+      description: "One of: Layout, Mistranslation, Terminology, Formatting, Grammar, Style, Other" 
+    },
+    severity: { 
+      type: Type.STRING, 
+      description: "Critical, Major, or Minor" 
+    },
+    sourceText: { type: Type.STRING },
+    targetText: { type: Type.STRING },
+    description: { type: Type.STRING, description: "Detailed explanation of the issue" },
+    suggestionsTarget: { 
+      type: Type.ARRAY, 
+      items: { type: Type.STRING },
+      description: "List of suggested corrections"
+    }
+  },
+  required: ["id", "location", "issueCategory", "severity", "description"]
+};
+
+const scoresSchema: Schema = {
+  type: Type.OBJECT,
+  properties: {
+    accuracy: { type: Type.NUMBER },
+    terminology: { type: Type.NUMBER },
+    layout: { type: Type.NUMBER },
+    grammar: { type: Type.NUMBER },
+    formatting: { type: Type.NUMBER },
+    localizationTone: { type: Type.NUMBER }
+  },
+  required: ["accuracy", "terminology", "layout", "grammar", "formatting", "localizationTone"]
+};
+
+const overallSchema: Schema = {
+  type: Type.OBJECT,
+  properties: {
+    qualityLevel: { 
+      type: Type.STRING, 
+      description: "Critical, Poor, Average, Good, or Perfect" 
+    },
+    scores: scoresSchema,
+    sceneDescription: { type: Type.STRING },
+    mainProblemsSummary: { type: Type.STRING }
+  },
+  required: ["qualityLevel", "scores", "sceneDescription", "mainProblemsSummary"]
+};
+
+const summarySchema: Schema = {
+  type: Type.OBJECT,
+  properties: {
+    severeCount: { type: Type.NUMBER },
+    majorCount: { type: Type.NUMBER },
+    minorCount: { type: Type.NUMBER },
+    optimizationAdvice: { type: Type.STRING },
+    termAdvice: { type: Type.STRING }
+  },
+  required: ["severeCount", "majorCount", "minorCount", "optimizationAdvice"]
+};
+
+const reportResponseSchema: Schema = {
+  type: Type.OBJECT,
+  properties: {
+    screenshotId: { type: Type.STRING },
+    overall: overallSchema,
+    issues: {
+      type: Type.ARRAY,
+      items: qaIssueSchema
+    },
+    summary: summarySchema
+  },
+  required: ["overall", "issues", "summary"]
+};
 
 // Helper to convert URL (Blob or Remote) to Base64 data and mime type
 async function processImageUrl(url: string): Promise<ProcessedImage> {
@@ -59,6 +139,22 @@ async function processImageUrl(url: string): Promise<ProcessedImage> {
   }
 }
 
+// Auto-healing Retry Logic
+async function retryWithBackoff<T>(
+  fn: () => Promise<T>, 
+  retries = 2, 
+  delay = 1000
+): Promise<T> {
+  try {
+    return await fn();
+  } catch (error) {
+    if (retries === 0) throw error;
+    console.warn(`LLM Call failed, retrying in ${delay}ms... (${retries} left). Error:`, error);
+    await new Promise(resolve => setTimeout(resolve, delay));
+    return retryWithBackoff(fn, retries - 1, delay * 2);
+  }
+}
+
 export async function callTranslationQaLLM(payload: LlmRequestPayload): Promise<LlmResponse> {
   const apiKey = process.env.API_KEY;
   if (!apiKey) {
@@ -68,78 +164,84 @@ export async function callTranslationQaLLM(payload: LlmRequestPayload): Promise<
 
   const ai = new GoogleGenAI({ apiKey });
 
-  try {
-    // 1. Prepare Images
-    // Concurrent fetch and conversion with correct MIME type detection
-    const [enImage, deImage] = await Promise.all([
-      processImageUrl(payload.enImageBase64 || ''),
-      processImageUrl(payload.deImageBase64 || '')
-    ]);
-
-    // 2. Prepare Prompt (Dynamic based on language)
-    const systemPrompt = getAnalysisSystemPrompt(payload.targetLanguage, payload.reportLanguage);
-    
-    const userPrompt = `
-      Project Context / Glossary:
-      ${payload.glossaryText ? payload.glossaryText : "No specific glossary provided."}
-
-      Task:
-      Analyze the attached UI screenshots for Localization Quality Assurance (LQA).
-      - Image 1: Source Language (en-US)
-      - Image 2: Target Language (${payload.targetLanguage})
-
-      Identify specific issues regarding:
-      1. Layout (Truncation, Overlap, Misalignment)
-      2. Translation Accuracy (Mistranslations)
-      3. Terminology Consistency
-      4. Formatting (Dates, Numbers)
-      
-      Output the JSON report strictly adhering to the schema defined in the system instruction.
-    `;
-
-    // 3. Call Gemini API
-    const response = await ai.models.generateContent({
-      model: LLM_MODEL_ID,
-      contents: {
-        parts: [
-          { inlineData: { mimeType: enImage.mimeType, data: enImage.data } },
-          { inlineData: { mimeType: deImage.mimeType, data: deImage.data } },
-          { text: userPrompt }
-        ]
-      },
-      config: {
-        systemInstruction: systemPrompt,
-        responseMimeType: "application/json",
-        temperature: 0.4, 
-      }
-    });
-
-    const responseText = response.text;
-    
-    if (!responseText) {
-      throw new Error("Received empty response from Gemini API.");
-    }
-
-    // 4. Parse Response
-    let parsedReport: ScreenshotReport;
+  return retryWithBackoff(async () => {
     try {
-      // Handle potential markdown wrapping (e.g., ```json ... ```)
-      const cleanedText = responseText.replace(/```json\s*/g, '').replace(/```\s*$/g, '').trim();
-      parsedReport = JSON.parse(cleanedText);
-    } catch (e) {
-      console.error("Failed to parse JSON response:", responseText);
-      throw new Error("Invalid JSON response from model.");
+      // 1. Prepare Images
+      const [enImage, deImage] = await Promise.all([
+        processImageUrl(payload.enImageBase64 || ''),
+        processImageUrl(payload.deImageBase64 || '')
+      ]);
+
+      // 2. Prepare Prompt (Dynamic based on language)
+      const systemPrompt = getAnalysisSystemPrompt(payload.targetLanguage, payload.reportLanguage);
+      
+      const userPrompt = `
+        Project Context / Glossary (Total Chars: ${payload.glossaryText?.length || 0}):
+        ${payload.glossaryText ? payload.glossaryText : "No specific glossary provided."}
+
+        Task:
+        Analyze the attached UI screenshots for Localization Quality Assurance (LQA).
+        - Image 1: Source Language (en-US)
+        - Image 2: Target Language (${payload.targetLanguage})
+
+        Identify specific issues regarding:
+        1. Layout (Truncation, Overlap, Misalignment)
+        2. Translation Accuracy (Mistranslations)
+        3. Terminology Consistency
+        4. Formatting (Dates, Numbers)
+        
+        IMPORTANT: Your response MUST be valid JSON adhering strictly to the provided schema.
+      `;
+
+      // 3. Call Gemini API with Schema Enforcement
+      const response = await ai.models.generateContent({
+        model: LLM_MODEL_ID,
+        contents: {
+          parts: [
+            { inlineData: { mimeType: enImage.mimeType, data: enImage.data } },
+            { inlineData: { mimeType: deImage.mimeType, data: deImage.data } },
+            { text: userPrompt }
+          ]
+        },
+        config: {
+          systemInstruction: systemPrompt,
+          responseMimeType: "application/json",
+          responseSchema: reportResponseSchema, // STRICT SCHEMA ENFORCEMENT
+          temperature: 0.2, // Lower temperature for more deterministic output
+        }
+      });
+
+      const responseText = response.text;
+      
+      if (!responseText) {
+        throw new Error("Received empty response from Gemini API.");
+      }
+
+      // 4. Parse Response
+      let parsedReport: ScreenshotReport;
+      try {
+        // Handle potential markdown wrapping (e.g., ```json ... ```)
+        const cleanedText = responseText.replace(/```json\s*/g, '').replace(/```\s*$/g, '').trim();
+        parsedReport = JSON.parse(cleanedText);
+      } catch (e) {
+        console.error("Failed to parse JSON response:", responseText);
+        throw new Error("Invalid JSON response from model.");
+      }
+
+      // Ensure the ID matches the request for UI tracking
+      // If model forgets to output screenshotId, we polyfill it here
+      parsedReport.screenshotId = payload.screenshotId;
+      
+      // Fallback: Ensure issues array exists
+      if (!parsedReport.issues) parsedReport.issues = [];
+
+      return {
+        report: parsedReport
+      };
+
+    } catch (error) {
+      console.error("Gemini LQA Analysis Failed:", error);
+      throw error;
     }
-
-    // Ensure the ID matches the request for UI tracking
-    parsedReport.screenshotId = payload.screenshotId;
-
-    return {
-      report: parsedReport
-    };
-
-  } catch (error) {
-    console.error("Gemini LQA Analysis Failed:", error);
-    throw error;
-  }
+  });
 }

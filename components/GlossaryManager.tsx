@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { BookOpen, FileSpreadsheet, Upload, History, Trash2, Check, AlertCircle, FileText, Loader2, Layers, Plus, X } from 'lucide-react';
+import { BookOpen, FileSpreadsheet, Upload, History, Trash2, Check, AlertCircle, FileText, Loader2, Layers, Plus, X, RotateCcw } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
 interface GlossaryManagerProps {
   currentGlossary: string;
   onUpdate: (text: string) => void;
+  onLangDetected?: (lang: 'de-DE' | 'fr-FR' | null) => void;
   t: any;
 }
 
@@ -15,7 +16,6 @@ interface GlossaryHistoryItem {
   content: string;
 }
 
-// Added: Interface for managing multiple loaded files
 interface LoadedFile {
   id: string;
   name: string;
@@ -23,13 +23,12 @@ interface LoadedFile {
   terms: string[]; // Array of "Source = Target"
 }
 
-export const GlossaryManager: React.FC<GlossaryManagerProps> = ({ currentGlossary, onUpdate, t }) => {
+export const GlossaryManager: React.FC<GlossaryManagerProps> = ({ currentGlossary, onUpdate, onLangDetected, t }) => {
   const [activeTab, setActiveTab] = useState<'manual' | 'import'>('manual');
   const [isDragging, setIsDragging] = useState(false);
   const [isParsing, setIsParsing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
-  // New States for Append Mode
   const [uploadMode, setUploadMode] = useState<'replace' | 'append'>('replace');
   const [loadedFiles, setLoadedFiles] = useState<LoadedFile[]>([]);
 
@@ -37,7 +36,6 @@ export const GlossaryManager: React.FC<GlossaryManagerProps> = ({ currentGlossar
   const [previewData, setPreviewData] = useState<string[]>([]);
   const [totalTerms, setTotalTerms] = useState(0);
 
-  // Load history
   useEffect(() => {
     try {
       const saved = localStorage.getItem('vision_lqa_glossary_history');
@@ -49,16 +47,7 @@ export const GlossaryManager: React.FC<GlossaryManagerProps> = ({ currentGlossar
     }
   }, []);
 
-  // Effect: When loadedFiles changes, merge content and update parent
   useEffect(() => {
-    if (loadedFiles.length === 0 && activeTab === 'import') {
-      // If user clears all files in import tab, maybe we shouldn't clear the glossary instantly 
-      // if they just switched tabs. But if they explicitly deleted files, yes.
-      // To be safe: Only auto-update if we have files. 
-      // Actually, if we clear files, we probably want to clear context.
-      // But let's avoid clearing on initial mount.
-    }
-
     if (activeTab === 'import') {
         recompileGlossary(loadedFiles);
     }
@@ -76,29 +65,46 @@ export const GlossaryManager: React.FC<GlossaryManagerProps> = ({ currentGlossar
     localStorage.setItem('vision_lqa_glossary_history', JSON.stringify(newHistory));
   };
 
-  // Helper: Merge all loaded files with deduplication
+  // Helper to guess language from filename
+  const detectLanguageFromFile = (filename: string): 'de-DE' | 'fr-FR' | null => {
+      const lower = filename.toLowerCase();
+      if (lower.includes('de') || lower.includes('ger') || lower.includes('deutsch')) return 'de-DE';
+      if (lower.includes('fr') || lower.includes('fre') || lower.includes('french')) return 'fr-FR';
+      return null;
+  };
+
   const recompileGlossary = (files: LoadedFile[]) => {
     if (files.length === 0) {
         setTotalTerms(0);
         setPreviewData([]);
-        // Optional: clear parent if we want explicit clear
-        // onUpdate(""); 
+        onUpdate("");
+        if (onLangDetected) onLangDetected(null);
         return;
     }
 
-    // Use Map to deduplicate based on Source Key
     const termMap = new Map<string, string>();
-    
-    // Process in order, later files overwrite earlier ones
+    const fileLangs = new Set<'de-DE' | 'fr-FR'>();
+
     files.forEach(file => {
+        // Collect Detected Langs
+        const detected = detectLanguageFromFile(file.name);
+        if (detected) fileLangs.add(detected);
+
         file.terms.forEach(line => {
             const parts = line.split('=');
             if (parts.length >= 2) {
                 const sourceKey = parts[0].trim().toLowerCase();
-                termMap.set(sourceKey, line); // Overwrite with new definition
+                termMap.set(sourceKey, line);
             }
         });
     });
+
+    // Heuristic: If we found mostly DE files, notify parent it's DE context
+    if (onLangDetected) {
+        if (fileLangs.has('de-DE') && !fileLangs.has('fr-FR')) onLangDetected('de-DE');
+        else if (fileLangs.has('fr-FR') && !fileLangs.has('de-DE')) onLangDetected('fr-FR');
+        else onLangDetected(null); // Mixed or unknown
+    }
 
     const uniqueTerms = Array.from(termMap.values());
     const mergedContent = uniqueTerms.join('\n');
@@ -106,6 +112,13 @@ export const GlossaryManager: React.FC<GlossaryManagerProps> = ({ currentGlossar
     setTotalTerms(uniqueTerms.length);
     setPreviewData(uniqueTerms.slice(0, 10));
     onUpdate(mergedContent);
+  };
+
+  const handleResetContext = () => {
+      if (window.confirm("Are you sure you want to remove all loaded glossary files?")) {
+          setLoadedFiles([]);
+          onUpdate("");
+      }
   };
 
   const processFileContent = async (file: File): Promise<string[]> => {
@@ -139,7 +152,7 @@ export const GlossaryManager: React.FC<GlossaryManagerProps> = ({ currentGlossar
 
     try {
       const terms = await processFileContent(file);
-      const content = terms.join('\n'); // Plain text for history logic
+      const content = terms.join('\n');
 
       const newFileObj: LoadedFile = {
           id: Math.random().toString(36).substr(2, 9),
@@ -180,20 +193,16 @@ export const GlossaryManager: React.FC<GlossaryManagerProps> = ({ currentGlossar
     }
   };
 
-  // Mock loader for defaults
   const fetchDefaultGlossary = async (lang: 'de' | 'fr') => {
     setIsParsing(true);
     setError(null);
-    
-    // Simulate generic fetch flow
     const fileName = lang === 'de' ? 'Default_DE.xlsx' : 'Default_FR.xlsx';
     try {
-        // Just mock the data directly for UI responsiveness in this specific flow
         const mockTerms = lang === 'de' 
             ? ["Site = Standort", "Extension = Nebenstelle", "Call Queue = Warteschleife", "IVR Menu = IVR-Menü"]
             : ["Site = Site", "Extension = Extension", "Call Queue = File d'attente", "IVR Menu = Menu IVR"];
         
-        await new Promise(r => setTimeout(r, 600)); // Fake network delay
+        await new Promise(r => setTimeout(r, 600));
 
         const newFileObj: LoadedFile = {
             id: Math.random().toString(36).substr(2, 9),
@@ -215,13 +224,8 @@ export const GlossaryManager: React.FC<GlossaryManagerProps> = ({ currentGlossar
     }
   };
 
-  // Handle manual tab switch: Sync manual changes if necessary, but manual edits
-  // are usually separate. We'll just let the parent state hold the manual text.
-  // The 'files' state is specific to the Import Tab.
-
   return (
     <div className="flex flex-col h-full bg-slate-50 border-t border-slate-100">
-      {/* Tabs */}
       <div className="flex border-b border-slate-200">
         <button
           onClick={() => setActiveTab('manual')}
@@ -240,8 +244,6 @@ export const GlossaryManager: React.FC<GlossaryManagerProps> = ({ currentGlossar
       </div>
 
       <div className="flex-1 p-0 relative">
-        
-        {/* Manual Tab */}
         {activeTab === 'manual' && (
           <textarea 
             className="w-full h-32 p-3 text-xs border-0 resize-none focus:ring-0 bg-transparent"
@@ -251,11 +253,9 @@ export const GlossaryManager: React.FC<GlossaryManagerProps> = ({ currentGlossar
           />
         )}
 
-        {/* Import Tab */}
         {activeTab === 'import' && (
           <div className="p-3 h-32 overflow-y-auto custom-scrollbar">
             
-            {/* Mode Switcher */}
             <div className="flex items-center justify-center space-x-4 mb-3 text-[10px]">
                 <label className="flex items-center space-x-1 cursor-pointer">
                     <input 
@@ -279,7 +279,24 @@ export const GlossaryManager: React.FC<GlossaryManagerProps> = ({ currentGlossar
                 </label>
             </div>
 
-            {/* Upload Area */}
+            {/* Active Context Visual Indicator */}
+            {loadedFiles.length > 0 && (
+                <div className="mb-3 flex items-center justify-between bg-green-50 border border-green-200 rounded px-2 py-1.5">
+                    <div className="flex items-center text-green-700 text-[10px] font-bold">
+                        <Check className="w-3 h-3 mr-1" />
+                        {t.contextActive}
+                    </div>
+                    <button 
+                        onClick={handleResetContext}
+                        className="text-[9px] text-red-500 hover:text-red-700 flex items-center font-medium bg-white px-1.5 py-0.5 rounded border border-red-100 shadow-sm hover:shadow"
+                        title={t.glossary.resetAll}
+                    >
+                        <Trash2 className="w-2.5 h-2.5 mr-1" />
+                        {t.glossary.clear}
+                    </button>
+                </div>
+            )}
+
             {!isParsing && (
                <div 
                  onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
@@ -317,7 +334,6 @@ export const GlossaryManager: React.FC<GlossaryManagerProps> = ({ currentGlossar
               </div>
             )}
 
-            {/* File List & Stats */}
             {loadedFiles.length > 0 && (
                 <div className="mt-3">
                     <div className="flex justify-between items-center mb-1.5">
@@ -348,7 +364,6 @@ export const GlossaryManager: React.FC<GlossaryManagerProps> = ({ currentGlossar
                 </div>
             )}
 
-            {/* Default Loaders */}
             <div className="mt-3 grid grid-cols-2 gap-2">
               <button 
                 onClick={() => fetchDefaultGlossary('de')}
@@ -366,7 +381,6 @@ export const GlossaryManager: React.FC<GlossaryManagerProps> = ({ currentGlossar
               </button>
             </div>
 
-            {/* History Link (Only show if no files loaded, to keep UI clean) */}
             {loadedFiles.length === 0 && history.length > 0 && (
                <div className="mt-4 border-t border-slate-100 pt-2">
                   <h4 className="text-[10px] font-bold text-slate-400 mb-2 uppercase flex items-center">
@@ -381,7 +395,6 @@ export const GlossaryManager: React.FC<GlossaryManagerProps> = ({ currentGlossar
                          </div>
                          <button 
                            onClick={() => {
-                               // For history restore, we act like a single file replace for simplicity
                                setUploadMode('replace');
                                const restoredFile: LoadedFile = {
                                    id: Math.random().toString(36).substr(2, 9),

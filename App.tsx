@@ -6,7 +6,7 @@ import { GlossaryManager } from './components/GlossaryManager';
 import { ScreenshotPair, LlmRequestPayload, BulkProcessingState, ScreenshotReport, AppLanguage } from './types';
 import { callTranslationQaLLM } from './services/llmService';
 import { generateReportHtml } from './services/reportGenerator';
-import { Layers, Activity, BookOpen, PanelLeftOpen, PanelLeftClose, PlayCircle, Globe, Loader2, RotateCcw } from 'lucide-react';
+import { Layers, Activity, BookOpen, PanelLeftOpen, PanelLeftClose, PlayCircle, Globe, Loader2, RotateCcw, Trash2 } from 'lucide-react';
 import { LLM_DISPLAY_NAME, APP_VERSION, UI_TEXT } from './constants';
 import JSZip from 'jszip';
 
@@ -25,6 +25,8 @@ const App: React.FC = () => {
   const [pairs, setPairs] = useState<ScreenshotPair[]>([]);
   const [selectedPairId, setSelectedPairId] = useState<string | null>(null);
   const [glossaryText, setGlossaryText] = useState<string>('');
+  const [glossaryDetectedLang, setGlossaryDetectedLang] = useState<'de-DE' | 'fr-FR' | null>(null);
+  
   const [isSidebarOpen, setSidebarOpen] = useState(true);
   const [activeRightPanel, setActiveRightPanel] = useState<'report' | 'global'>('report');
   
@@ -50,10 +52,10 @@ const App: React.FC = () => {
     localStorage.setItem('vision_lqa_lang', newLang);
   };
 
-  // Start Over Logic
+  // Start Over Logic (Explicitly clears everything)
   const handleStartOver = () => {
     if (pairs.length > 0) {
-        if (!window.confirm("Are you sure you want to start over? This will clear all current screenshots and reports.")) {
+        if (!window.confirm("Are you sure you want to start over? This will clear ALL current screenshots and reports.")) {
             return;
         }
     }
@@ -68,6 +70,18 @@ const App: React.FC = () => {
         errors: [],
         isComplete: false
     });
+    // Note: We deliberately do NOT clear glossaryText here to allow persistence if user just made a mistake with Screenshots.
+    // Use the "Clear" button in GlossaryManager for that.
+  };
+
+  // New: Clear only screenshots list
+  const handleClearScreenshots = () => {
+      if (pairs.length > 0) {
+          if (window.confirm("Clear all screenshots? Your glossary/context will be preserved.")) {
+              setPairs([]);
+              setSelectedPairId(null);
+          }
+      }
   };
 
   // Demo Data Loading
@@ -75,8 +89,7 @@ const App: React.FC = () => {
     const demoId = "demo-pair-01";
     const demoImage = "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?q=80&w=1200&auto=format&fit=crop";
 
-    // Demo report needs to match new schema (no Zh suffixes)
-    // We provide a generic demo report
+    // Demo report needs to match new schema
     const demoReport: ScreenshotReport = {
       screenshotId: demoId,
       overall: {
@@ -117,7 +130,7 @@ const App: React.FC = () => {
         enImageUrl: demoImage,
         deImageUrl: demoImage,
         targetLanguage: 'de-DE',
-        status: 'completed', // Set to completed to show the report immediately
+        status: 'completed',
         report: demoReport
       }
     ]);
@@ -127,10 +140,25 @@ const App: React.FC = () => {
   }, [appLanguage]);
 
   const handlePairsCreated = (newPairs: ScreenshotPair[]) => {
+    // Check for language mismatch
+    if (newPairs.length > 0 && glossaryDetectedLang) {
+        const zipLang = newPairs[0].targetLanguage;
+        if (glossaryDetectedLang !== zipLang) {
+            const msg = t.langMismatchMsg
+               .replace('{zipLang}', zipLang)
+               .replace('{glossaryLang}', glossaryDetectedLang);
+            
+            // Ask user if they want to proceed despite mismatch
+            if (!window.confirm(msg)) {
+                return; // Abort loading these pairs
+            }
+        }
+    }
+
     setPairs(prev => [...prev, ...newPairs]);
     if (newPairs.length > 0 && !selectedPairId) {
       setSelectedPairId(newPairs[0].id);
-      setActiveRightPanel('report'); // Switch to report view when user uploads files
+      setActiveRightPanel('report');
     }
   };
 
@@ -454,12 +482,23 @@ const App: React.FC = () => {
             <GlossaryManager 
               currentGlossary={glossaryText}
               onUpdate={setGlossaryText}
+              onLangDetected={setGlossaryDetectedLang}
               t={t}
             />
           </div>
 
-          <div className="p-2 bg-slate-50 text-xs font-bold text-slate-400 uppercase tracking-wider px-4 py-3">
-            {t.screenshotsList} ({pairs.length})
+          <div className="p-2 bg-slate-50 text-xs font-bold text-slate-400 uppercase tracking-wider px-4 py-3 flex justify-between items-center">
+            <span>{t.screenshotsList} ({pairs.length})</span>
+            {pairs.length > 0 && (
+                <button 
+                    onClick={handleClearScreenshots}
+                    className="text-[10px] text-red-500 hover:bg-red-50 px-2 py-0.5 rounded flex items-center border border-red-200 transition-colors"
+                    title={t.clearList}
+                >
+                    <Trash2 className="w-3 h-3 mr-1" />
+                    {t.glossary.clear}
+                </button>
+            )}
           </div>
           
           <PairList 
