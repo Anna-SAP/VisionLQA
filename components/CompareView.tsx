@@ -149,10 +149,14 @@ export const CompareView: React.FC<CompareViewProps> = ({ pair, t }) => {
             style={{ width: `${currentImageWidth}px` }}
           >
              {/* Floating Badge: Source */}
-            <div className="absolute -top-3 left-4 z-10">
-                <div className="bg-slate-700 text-white px-3 py-1 rounded shadow-lg text-xs font-bold tracking-wide flex items-center border border-slate-600">
+            <div className="absolute -top-3 left-4 z-10 flex items-center gap-2 max-w-[calc(100%-2rem)]">
+                <div className="bg-slate-700 text-white px-3 py-1 rounded shadow-lg text-xs font-bold tracking-wide flex items-center border border-slate-600 shrink-0">
                     <span className="opacity-75 mr-1.5 font-normal uppercase">{t.source}</span>
                     <span>en-US</span>
+                </div>
+                {/* Filename Badge */}
+                <div className="bg-white/90 backdrop-blur text-slate-700 px-2 py-1 rounded shadow-sm text-[11px] font-medium border border-slate-300/80 truncate min-w-0" title={pair.fileName}>
+                    {pair.fileName}
                 </div>
             </div>
 
@@ -175,10 +179,14 @@ export const CompareView: React.FC<CompareViewProps> = ({ pair, t }) => {
             style={{ width: `${currentImageWidth}px` }}
           >
             {/* Floating Badge: Target - Dynamically moves with the image */}
-            <div className="absolute -top-3 left-4 z-10">
-                <div className="bg-purple-600 text-white px-3 py-1 rounded shadow-lg text-xs font-bold tracking-wide flex items-center border border-purple-500">
+            <div className="absolute -top-3 left-4 z-10 flex items-center gap-2 max-w-[calc(100%-2rem)]">
+                <div className="bg-purple-600 text-white px-3 py-1 rounded shadow-lg text-xs font-bold tracking-wide flex items-center border border-purple-500 shrink-0">
                     <span className="opacity-75 mr-1.5 font-normal uppercase">{t.target}</span>
                     <span>{targetLabel}</span>
+                </div>
+                {/* Filename Badge */}
+                <div className="bg-white/90 backdrop-blur text-slate-700 px-2 py-1 rounded shadow-sm text-[11px] font-medium border border-slate-300/80 truncate min-w-0" title={pair.fileName}>
+                    {pair.fileName}
                 </div>
             </div>
 
