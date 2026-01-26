@@ -5,7 +5,7 @@ import { CompareView } from './components/CompareView';
 import { GlossaryManager } from './components/GlossaryManager';
 import { ScreenshotPair, LlmRequestPayload, BulkProcessingState, ScreenshotReport, AppLanguage } from './types';
 import { callTranslationQaLLM } from './services/llmService';
-import { generateReportHtml } from './services/reportGenerator';
+import { generateReportHtml, generateExportFilename } from './services/reportGenerator';
 import { Layers, Activity, BookOpen, PanelLeftOpen, PanelLeftClose, PlayCircle, Globe, Loader2, RotateCcw, Trash2, GripVertical } from 'lucide-react';
 import { LLM_DISPLAY_NAME, APP_VERSION, UI_TEXT } from './constants';
 import JSZip from 'jszip';
@@ -402,9 +402,12 @@ const App: React.FC = () => {
     for (const pair of completedPairs) {
         // Use the shared generator function
         const html = generateReportHtml(pair.report!, pair.fileName, pair.targetLanguage);
-        const qualityPrefix = pair.report!.overall.qualityLevel;
-        zip.file(`${qualityPrefix}_${pair.targetLanguage}_${pair.fileName}.html`, html);
-        zip.file(`${qualityPrefix}_${pair.targetLanguage}_${pair.fileName}.json`, JSON.stringify(pair.report, null, 2));
+        
+        // Use standard filename logic
+        const filename = generateExportFilename(pair.report!, pair.fileName, pair.targetLanguage);
+        
+        zip.file(filename, html);
+        zip.file(`${filename.replace('.html', '.json')}`, JSON.stringify(pair.report, null, 2));
     }
 
     const content = await zip.generateAsync({ type: "blob" });

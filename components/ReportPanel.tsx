@@ -3,7 +3,7 @@ import { ScreenshotPair, QaIssue, ScreenshotReport } from '../types';
 import { Button } from './Button';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from 'recharts';
 import { AlertTriangle, AlertOctagon, Info, Download, RefreshCw, AlertCircle, FileText, Loader2 } from 'lucide-react';
-import { generateReportHtml } from '../services/reportGenerator';
+import { generateReportHtml, determineStrictQuality, generateExportFilename } from '../services/reportGenerator';
 
 interface ReportPanelProps {
   pair: ScreenshotPair | null;
@@ -70,6 +70,9 @@ export const ReportPanel: React.FC<ReportPanelProps> = ({ pair, onGenerate, isGe
   const report = pair.report!;
   const scores = report.overall.scores;
   
+  // Calculate strict quality for UI display (overriding LLM generic level if needed)
+  const strictQuality = determineStrictQuality(report);
+
   const radarData = [
     { subject: 'Accuracy', A: scores?.accuracy || 0, fullMark: 5 },
     { subject: 'Terms', A: scores?.terminology || 0, fullMark: 5 },
@@ -123,8 +126,11 @@ export const ReportPanel: React.FC<ReportPanelProps> = ({ pair, onGenerate, isGe
         const url = URL.createObjectURL(blob);
         const downloadAnchorNode = document.createElement('a');
         downloadAnchorNode.setAttribute("href", url);
-        const qualityPrefix = report.overall.qualityLevel;
-        downloadAnchorNode.setAttribute("download", `${qualityPrefix}_${targetLangLabel}_${pair.fileName}.html`);
+        
+        // Use standard filename generator
+        const fileName = generateExportFilename(report, pair.fileName, targetLangLabel);
+        
+        downloadAnchorNode.setAttribute("download", fileName);
         document.body.appendChild(downloadAnchorNode);
         downloadAnchorNode.click();
         downloadAnchorNode.remove();
@@ -146,10 +152,12 @@ export const ReportPanel: React.FC<ReportPanelProps> = ({ pair, onGenerate, isGe
           <div className="flex items-center mt-0.5 space-x-2">
             <span className="text-xs text-slate-500">QA Report ({targetLangLabel})</span>
             <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium border ${
-              report.overall.qualityLevel === 'Critical' ? 'bg-red-50 text-red-700 border-red-200' : 
-              report.overall.qualityLevel === 'Poor' ? 'bg-orange-50 text-orange-700 border-orange-200' : 'bg-green-50 text-green-700 border-green-200'
+              strictQuality === 'Critical' ? 'bg-red-50 text-red-700 border-red-200' : 
+              strictQuality === 'Poor' ? 'bg-orange-50 text-orange-700 border-orange-200' : 
+              strictQuality === 'Good' ? 'bg-blue-50 text-blue-700 border-blue-200' : 
+              'bg-green-50 text-green-700 border-green-200'
             }`}>
-              {report.overall.qualityLevel}
+              {strictQuality}
             </span>
           </div>
         </div>

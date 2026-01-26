@@ -1,5 +1,47 @@
 import { ScreenshotReport, QaScores } from '../types';
 
+// --- Strict Grading & Naming Logic ---
+
+export const determineStrictQuality = (report: ScreenshotReport): 'Critical' | 'Poor' | 'Good' | 'Excellent' => {
+  const issues = report.issues || [];
+  
+  // 1. Critical: Explicit severity or existing level
+  if (issues.some(i => i.severity === 'Critical')) return 'Critical';
+  if (report.overall.qualityLevel === 'Critical') return 'Critical';
+
+  // 2. Poor: Presence of Terminology or Layout issues
+  const hasTerm = issues.some(i => i.issueCategory === 'Terminology');
+  const hasLayout = issues.some(i => i.issueCategory === 'Layout');
+  if (hasTerm || hasLayout) return 'Poor';
+
+  // 3. Excellent: No issues found
+  if (issues.length === 0) return 'Excellent';
+
+  // 4. Good: Issues exist but are minor (Style, Grammar, etc.)
+  return 'Good';
+};
+
+export const determineIssueTypeTag = (report: ScreenshotReport): string => {
+  const issues = report.issues || [];
+  const hasTerm = issues.some(i => i.issueCategory === 'Terminology');
+  const hasLayout = issues.some(i => i.issueCategory === 'Layout');
+
+  if (hasTerm && hasLayout) return 'Term_Layout';
+  if (hasTerm) return 'Term';
+  if (hasLayout) return 'Layout';
+  return 'General';
+};
+
+export const generateExportFilename = (report: ScreenshotReport, fileName: string, targetLang: string): string => {
+  const quality = determineStrictQuality(report);
+  const tag = determineIssueTypeTag(report);
+  // Sanitize filename to ensure it's safe for file systems
+  const safeName = fileName.replace(/[^a-zA-Z0-9-_]/g, '_');
+  return `${quality}_${tag}_${targetLang}_${safeName}.html`;
+};
+
+// --- Report Generation ---
+
 // Helper to generate SVG Radar Chart string
 const generateRadarSvg = (scores: QaScores): string => {
     // Configuration
@@ -23,8 +65,6 @@ const generateRadarSvg = (scores: QaScores): string => {
     const angleStep = (Math.PI * 2) / metrics.length;
     
     // Helper to calculate coordinates
-    // SVG coordinate system: 0 degrees is 3 o'clock. We want top (12 o'clock) to be start.
-    // So we subtract PI/2 (-90deg).
     const getCoords = (value: number, index: number) => {
         const angle = index * angleStep - Math.PI / 2;
         const r = (value / maxScore) * radius;
@@ -96,6 +136,12 @@ export const generateReportHtml = (
     const { overall, issues, summary } = report;
     const date = new Date().toLocaleString();
     const radarSvg = generateRadarSvg(overall.scores);
+    
+    // Apply Strict Grading for the Display
+    const strictQuality = determineStrictQuality(report);
+
+    // Serialize issues for JS injection
+    const issuesJson = JSON.stringify(issues).replace(/</g, '\\u003c');
 
     const styles = `
       body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: #334155; line-height: 1.6; max-width: 960px; margin: 0 auto; padding: 40px; background: #f8fafc; }
@@ -104,10 +150,12 @@ export const generateReportHtml = (
       .subtitle { font-size: 16px; color: #64748b; margin-top: 4px; }
       .meta { text-align: right; color: #64748b; font-size: 14px; }
       .badge { display: inline-block; padding: 4px 12px; border-radius: 9999px; font-size: 12px; font-weight: 600; text-transform: uppercase; }
+      
       .badge-critical { background: #fee2e2; color: #991b1b; }
       .badge-poor { background: #ffedd5; color: #9a3412; }
       .badge-average { background: #fef9c3; color: #854d0e; }
       .badge-good { background: #dbeafe; color: #1e40af; }
+      .badge-excellent { background: #dcfce7; color: #166534; } 
       .badge-perfect { background: #dcfce7; color: #166534; }
       
       .section { background: white; padding: 32px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); margin-bottom: 24px; border: 1px solid #e2e8f0; }
@@ -148,22 +196,144 @@ export const generateReportHtml = (
       .overview-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 24px; margin-bottom: 24px; }
       .chart-container { display: flex; justify-content: center; align-items: center; background: #fff; }
 
-      .screenshot-container { margin-top: 24px; }
-      .screenshot-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-      .screenshot-box { border: 1px solid #cbd5e1; border-radius: 8px; overflow: hidden; background: #f1f5f9; }
-      .screenshot-box img { display: block; width: 100%; height: auto; }
-      .screenshot-label { padding: 8px 12px; background: #fff; border-bottom: 1px solid #cbd5e1; font-size: 12px; font-weight: 700; color: #64748b; text-transform: uppercase; }
+      /* --- SLIDER COMPONENT STYLES --- */
+      .slider-wrapper {
+        position: relative;
+        margin-top: 24px;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        overflow: hidden;
+        user-select: none;
+        -webkit-user-select: none;
+        background: #f1f5f9;
+        /* Ensure aspect ratio logic if needed, but auto height usually fine */
+      }
+      
+      /* Instructions */
+      .slider-instructions {
+        font-size: 11px;
+        color: #64748b;
+        text-align: center;
+        margin-bottom: 12px;
+        font-family: monospace;
+        background: #f8fafc;
+        padding: 4px;
+        border-radius: 4px;
+        border: 1px solid #e2e8f0;
+      }
+
+      .compare-container {
+        position: relative;
+        width: 100%;
+        cursor: ew-resize; /* East-West resize cursor */
+        line-height: 0; /* Remove gap below images */
+      }
+
+      /* Base Image (Target/Bottom Layer) */
+      .target-layer {
+        position: relative;
+        width: 100%;
+        height: auto;
+        display: block;
+      }
+
+      .target-layer img {
+        width: 100%;
+        height: auto;
+        display: block;
+      }
+
+      /* Top Layer (Source/Top Layer) */
+      .source-layer {
+        position: absolute;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        width: 50%; /* JS will control this */
+        overflow: hidden;
+        border-right: 1px solid rgba(255,255,255,0.8);
+        box-shadow: 2px 0 5px rgba(0,0,0,0.2);
+        z-index: 10;
+        will-change: width;
+      }
+
+      /* Critical: Inner image must match container width to ensure alignment */
+      .source-layer img {
+        width: 100vw; /* Fallback */
+        /* JS will set specific pixel width to match container */
+        height: auto;
+        display: block;
+      }
+
+      /* Labels */
+      .label-badge {
+        position: absolute;
+        top: 10px;
+        padding: 4px 8px;
+        background: rgba(0,0,0,0.6);
+        color: white;
+        font-size: 10px;
+        font-weight: bold;
+        text-transform: uppercase;
+        border-radius: 4px;
+        z-index: 20;
+        pointer-events: none;
+        backdrop-filter: blur(2px);
+      }
+      .label-source { left: 10px; background: rgba(15, 23, 42, 0.8); }
+      .label-target { right: 10px; background: rgba(37, 99, 235, 0.8); }
+
+      /* Slider Handle */
+      .slider-handle {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: 50%; /* JS will control this */
+        width: 40px;
+        height: 40px;
+        margin-left: -20px;
+        top: 50%;
+        margin-top: -20px;
+        background: white;
+        border-radius: 50%;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+        z-index: 30;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #64748b;
+        pointer-events: none; /* Let clicks pass through to container */
+      }
+
+      /* X-Ray Defects */
+      .x-ray-box {
+        position: absolute;
+        border: 2px solid #ef4444;
+        background: rgba(239, 68, 68, 0.15);
+        z-index: 5; /* Above Target Img, Below Source Layer */
+        pointer-events: none;
+        box-shadow: 0 0 0 1px rgba(255,255,255,0.2);
+      }
+      .x-ray-box:hover {
+        background: rgba(239, 68, 68, 0.3);
+      }
+      .x-ray-label {
+        position: absolute;
+        top: -18px;
+        left: -2px;
+        background: #ef4444;
+        color: white;
+        font-size: 9px;
+        padding: 1px 4px;
+        font-weight: bold;
+        border-radius: 2px;
+      }
+
     `;
 
     const getQualityBadgeClass = (level: string) => {
-        switch(level) {
-            case 'Critical': return 'badge-critical';
-            case 'Poor': return 'badge-poor';
-            case 'Average': return 'badge-average';
-            case 'Good': return 'badge-good';
-            case 'Perfect': return 'badge-perfect';
-            default: return 'badge-average';
-        }
+        const lower = level.toLowerCase();
+        return `badge-${lower}`;
     };
 
     const issueHtml = issues.map(issue => `
@@ -212,7 +382,7 @@ export const generateReportHtml = (
             <div class="meta">
                 <div>Generated: ${date}</div>
                 <div style="margin-top:8px;">
-                    <span class="badge ${getQualityBadgeClass(overall.qualityLevel)}">${overall.qualityLevel} Quality</span>
+                    <span class="badge ${getQualityBadgeClass(strictQuality)}">${strictQuality} Quality</span>
                 </div>
             </div>
           </div>
@@ -248,15 +418,33 @@ export const generateReportHtml = (
 
           ${(enImageBase64 && targetImageBase64) ? `
           <div class="section">
-            <div class="section-title">Reference Screenshots</div>
-            <div class="screenshot-grid">
-                <div class="screenshot-box">
-                    <div class="screenshot-label">Source (EN-US)</div>
-                    <img src="${enImageBase64}" alt="Source Screenshot" />
-                </div>
-                <div class="screenshot-box">
-                    <div class="screenshot-label">Target (${targetLang})</div>
-                    <img src="${targetImageBase64}" alt="Target Screenshot" />
+            <div class="section-title">Visual Comparison (X-Ray Mode)</div>
+            <div class="slider-instructions">
+               Drag slider or use <kbd>←</kbd> <kbd>→</kbd> keys. Press <kbd>Space</kbd> to flicker toggle.
+            </div>
+            
+            <div class="slider-wrapper" id="sliderWrapper" tabindex="0" aria-label="Comparison Slider">
+                <div class="compare-container" id="compareContainer">
+                    
+                    <!-- Target Layer (Bottom) + Defects -->
+                    <div class="target-layer" id="targetLayer">
+                        <img src="${targetImageBase64}" alt="Target UI" id="targetImg" />
+                        <span class="label-badge label-target">Target (${targetLang})</span>
+                        <!-- X-Ray boxes will be injected here via JS -->
+                    </div>
+
+                    <!-- Source Layer (Top, Clipped) -->
+                    <div class="source-layer" id="sourceLayer" style="width: 50%;">
+                        <img src="${enImageBase64}" alt="Source UI" id="sourceImg" />
+                        <span class="label-badge label-source">Source (EN-US)</span>
+                    </div>
+
+                    <!-- Handle -->
+                    <div class="slider-handle" id="sliderHandle" style="left: 50%;">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left:-12px"><path d="m15 18-6-6 6-6"/></svg>
+                    </div>
+
                 </div>
             </div>
           </div>
@@ -287,6 +475,113 @@ export const generateReportHtml = (
           <div style="text-align:center; color:#94a3b8; font-size:12px; margin-top:40px;">
             Generated by Vision LQA Pro
           </div>
+
+          <!-- Component Logic -->
+          <script>
+            (function() {
+                const issues = ${issuesJson};
+                const container = document.getElementById('compareContainer');
+                const wrapper = document.getElementById('sliderWrapper');
+                const sourceLayer = document.getElementById('sourceLayer');
+                const sourceImg = document.getElementById('sourceImg');
+                const targetImg = document.getElementById('targetImg');
+                const targetLayer = document.getElementById('targetLayer');
+                const handle = document.getElementById('sliderHandle');
+                
+                if (!container || !sourceLayer || !handle) return;
+
+                let isDragging = false;
+                let currentPos = 50;
+
+                // 1. Initialize X-Ray Boxes
+                const initXRay = () => {
+                   issues.forEach(issue => {
+                      if (issue.boundingBox) {
+                         const box = document.createElement('div');
+                         box.className = 'x-ray-box';
+                         // Bounding box from LLM is 0-1 normalized
+                         box.style.left = (issue.boundingBox.x * 100) + '%';
+                         box.style.top = (issue.boundingBox.y * 100) + '%';
+                         box.style.width = (issue.boundingBox.width * 100) + '%';
+                         box.style.height = (issue.boundingBox.height * 100) + '%';
+                         
+                         const label = document.createElement('div');
+                         label.className = 'x-ray-label';
+                         label.innerText = issue.id;
+                         box.appendChild(label);
+                         
+                         targetLayer.appendChild(box);
+                      }
+                   });
+                };
+                initXRay();
+
+                // 2. Sync Source Image Width
+                // The source image inside the clipped layer MUST be the same width as the container
+                // to act as a perfect overlay.
+                const syncDimensions = () => {
+                    const w = container.offsetWidth;
+                    if (sourceImg) sourceImg.style.width = w + 'px';
+                };
+                window.addEventListener('resize', syncDimensions);
+                // Also trigger on load
+                if (targetImg) {
+                    targetImg.onload = syncDimensions;
+                    // Fallback
+                    setTimeout(syncDimensions, 100);
+                }
+
+                // 3. Update Slider
+                const setPosition = (percent) => {
+                    currentPos = Math.max(0, Math.min(100, percent));
+                    sourceLayer.style.width = currentPos + '%';
+                    handle.style.left = currentPos + '%';
+                };
+
+                const handleMove = (clientX) => {
+                    const rect = container.getBoundingClientRect();
+                    const x = clientX - rect.left;
+                    const percent = (x / rect.width) * 100;
+                    setPosition(percent);
+                };
+
+                // Mouse Events
+                container.addEventListener('mousedown', (e) => {
+                    isDragging = true;
+                    handleMove(e.clientX);
+                });
+                window.addEventListener('mouseup', () => isDragging = false);
+                window.addEventListener('mousemove', (e) => {
+                    if (isDragging) handleMove(e.clientX);
+                });
+
+                // Touch Events
+                container.addEventListener('touchstart', (e) => {
+                    isDragging = true;
+                    handleMove(e.touches[0].clientX);
+                });
+                window.addEventListener('touchend', () => isDragging = false);
+                window.addEventListener('touchmove', (e) => {
+                    if (isDragging) handleMove(e.touches[0].clientX);
+                });
+
+                // 4. Keyboard Controls (Flicker & Fine Tune)
+                wrapper.addEventListener('keydown', (e) => {
+                    const step = 1; 
+                    if (e.key === 'ArrowLeft') {
+                        setPosition(currentPos - step);
+                    } else if (e.key === 'ArrowRight') {
+                        setPosition(currentPos + step);
+                    } else if (e.key === ' ' || e.key === 'Spacebar') {
+                        e.preventDefault(); // Prevent scroll
+                        // Flicker Logic: Toggle between extremes to spot diffs
+                        if (currentPos > 50) setPosition(0);
+                        else setPosition(100);
+                    }
+                });
+
+            })();
+          </script>
         </body>
       </html>
     `;
