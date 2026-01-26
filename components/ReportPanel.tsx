@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { ScreenshotPair, QaIssue, ScreenshotReport } from '../types';
 import { Button } from './Button';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from 'recharts';
-import { AlertTriangle, AlertOctagon, Info, Download, RefreshCw, AlertCircle, FileText } from 'lucide-react';
+import { AlertTriangle, AlertOctagon, Info, Download, RefreshCw, AlertCircle, FileText, Loader2 } from 'lucide-react';
 import { generateReportHtml } from '../services/reportGenerator';
 
 interface ReportPanelProps {
@@ -14,6 +14,8 @@ interface ReportPanelProps {
 }
 
 export const ReportPanel: React.FC<ReportPanelProps> = ({ pair, onGenerate, isGenerating, glossary, t }) => {
+  const [isExporting, setIsExporting] = useState(false);
+
   if (!pair) {
     return (
       <div className="p-6 text-center text-slate-500 mt-20">
@@ -87,19 +89,52 @@ export const ReportPanel: React.FC<ReportPanelProps> = ({ pair, onGenerate, isGe
     downloadAnchorNode.remove();
   };
 
-  const downloadHtml = () => {
-    // Use shared generator to ensure full content
-    const htmlContent = generateReportHtml(report, pair.fileName, targetLangLabel);
-    const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const downloadAnchorNode = document.createElement('a');
-    downloadAnchorNode.setAttribute("href", url);
-    const qualityPrefix = report.overall.qualityLevel;
-    downloadAnchorNode.setAttribute("download", `${qualityPrefix}_${targetLangLabel}_${pair.fileName}.html`);
-    document.body.appendChild(downloadAnchorNode);
-    downloadAnchorNode.click();
-    downloadAnchorNode.remove();
-    URL.revokeObjectURL(url);
+  // Helper to convert blob URL to Base64
+  const blobUrlToBase64 = async (url: string): Promise<string> => {
+    try {
+        const response = await fetch(url);
+        const blob = await response.blob();
+        return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.readAsDataURL(blob);
+        });
+    } catch (e) {
+        console.warn("Failed to convert image to base64:", e);
+        return "";
+    }
+  };
+
+  const downloadHtml = async () => {
+    if (isExporting) return;
+    setIsExporting(true);
+
+    try {
+        // Fetch and convert both images to base64 concurrently
+        const [enBase64, targetBase64] = await Promise.all([
+            blobUrlToBase64(pair.enImageUrl),
+            blobUrlToBase64(pair.deImageUrl)
+        ]);
+
+        // Use shared generator with the new base64 images
+        const htmlContent = generateReportHtml(report, pair.fileName, targetLangLabel, enBase64, targetBase64);
+        
+        const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const downloadAnchorNode = document.createElement('a');
+        downloadAnchorNode.setAttribute("href", url);
+        const qualityPrefix = report.overall.qualityLevel;
+        downloadAnchorNode.setAttribute("download", `${qualityPrefix}_${targetLangLabel}_${pair.fileName}.html`);
+        document.body.appendChild(downloadAnchorNode);
+        downloadAnchorNode.click();
+        downloadAnchorNode.remove();
+        URL.revokeObjectURL(url);
+    } catch (error) {
+        console.error("Failed to generate HTML report", error);
+        alert("Failed to generate report. Please try again.");
+    } finally {
+        setIsExporting(false);
+    }
   };
 
   return (
@@ -119,8 +154,13 @@ export const ReportPanel: React.FC<ReportPanelProps> = ({ pair, onGenerate, isGe
           </div>
         </div>
         <div className="flex space-x-2 shrink-0">
-          <button onClick={downloadHtml} className="p-2 hover:bg-slate-100 rounded text-slate-500" title={t.exportHtml}>
-            <FileText className="w-4 h-4" />
+          <button 
+            onClick={downloadHtml} 
+            disabled={isExporting}
+            className="p-2 hover:bg-slate-100 rounded text-slate-500 disabled:opacity-50" 
+            title={t.exportHtml}
+          >
+            {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
           </button>
           <button onClick={downloadJson} className="p-2 hover:bg-slate-100 rounded text-slate-500" title={t.exportJson}>
             <Download className="w-4 h-4" />

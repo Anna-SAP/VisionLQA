@@ -82,7 +82,13 @@ const generateRadarSvg = (scores: QaScores): string => {
     `;
 };
 
-export const generateReportHtml = (report: ScreenshotReport, fileName: string, targetLang: string) => {
+export const generateReportHtml = (
+    report: ScreenshotReport, 
+    fileName: string, 
+    targetLang: string,
+    enImageBase64?: string,
+    targetImageBase64?: string
+) => {
     if (!report || !report.overall || !report.summary || !report.issues) {
       return `<html><body><h1>Error: Incomplete Report Data</h1></body></html>`;
     }
@@ -141,6 +147,12 @@ export const generateReportHtml = (report: ScreenshotReport, fileName: string, t
       
       .overview-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 24px; margin-bottom: 24px; }
       .chart-container { display: flex; justify-content: center; align-items: center; background: #fff; }
+
+      .screenshot-container { margin-top: 24px; }
+      .screenshot-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+      .screenshot-box { border: 1px solid #cbd5e1; border-radius: 8px; overflow: hidden; background: #f1f5f9; }
+      .screenshot-box img { display: block; width: 100%; height: auto; }
+      .screenshot-label { padding: 8px 12px; background: #fff; border-bottom: 1px solid #cbd5e1; font-size: 12px; font-weight: 700; color: #64748b; text-transform: uppercase; }
     `;
 
     const getQualityBadgeClass = (level: string) => {
@@ -233,6 +245,22 @@ export const generateReportHtml = (report: ScreenshotReport, fileName: string, t
                 </div>
             </div>
           </div>
+
+          ${(enImageBase64 && targetImageBase64) ? `
+          <div class="section">
+            <div class="section-title">Reference Screenshots</div>
+            <div class="screenshot-grid">
+                <div class="screenshot-box">
+                    <div class="screenshot-label">Source (EN-US)</div>
+                    <img src="${enImageBase64}" alt="Source Screenshot" />
+                </div>
+                <div class="screenshot-box">
+                    <div class="screenshot-label">Target (${targetLang})</div>
+                    <img src="${targetImageBase64}" alt="Target Screenshot" />
+                </div>
+            </div>
+          </div>
+          ` : ''}
 
           <div class="section">
             <div class="section-title">Scene Description</div>
