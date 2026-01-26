@@ -2,7 +2,7 @@ import { SupportedLocale, AppLanguage } from "./types";
 
 export const LLM_MODEL_ID = 'gemini-3-flash-preview';
 export const LLM_DISPLAY_NAME = 'Gemini 3 Flash';
-export const APP_VERSION = 'v1.4.7'; // Bump version
+export const APP_VERSION = 'v1.4.8'; // Bump version
 
 // UI Translations
 export const UI_TEXT = {
@@ -56,6 +56,11 @@ export const UI_TEXT = {
     langName: "简体中文",
     langMismatchTitle: "语种不匹配警告",
     langMismatchMsg: "检测到新上传的图片语言为 {zipLang}，但当前已加载的术语表似乎是 {glossaryLang}。\n\n是否继续使用当前术语表？",
+    // Layout
+    layout: {
+      horizontal: "双栏对比",
+      vertical: "垂直堆叠"
+    },
     // Glossary Manager
     glossary: {
       tabManual: "手动输入",
@@ -135,6 +140,11 @@ export const UI_TEXT = {
     langName: "English",
     langMismatchTitle: "Language Mismatch Warning",
     langMismatchMsg: "Detected new images are {zipLang}, but the loaded glossary appears to be {glossaryLang}.\n\nDo you want to continue with the current glossary?",
+    // Layout
+    layout: {
+      horizontal: "Side-by-Side",
+      vertical: "Stacked View"
+    },
     // Glossary Manager
     glossary: {
       tabManual: "Manual Input",
