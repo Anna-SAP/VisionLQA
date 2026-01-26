@@ -2,7 +2,7 @@ import { SupportedLocale, AppLanguage } from "./types";
 
 export const LLM_MODEL_ID = 'gemini-3-flash-preview';
 export const LLM_DISPLAY_NAME = 'Gemini 3 Flash';
-export const APP_VERSION = 'v1.4.6'; // Bump version
+export const APP_VERSION = 'v1.4.7'; // Bump version
 
 // UI Translations
 export const UI_TEXT = {
@@ -59,13 +59,14 @@ export const UI_TEXT = {
     // Glossary Manager
     glossary: {
       tabManual: "手动输入",
-      tabImport: "文件导入",
+      tabImport: "文件管理",
       dragDrop: "点击或拖拽上传术语表",
+      dragDropCompact: "点击或拖拽添加更多文件...",
       formats: "支持 .xlsx, .csv (最大 50MB)",
       parsing: "解析中...",
-      loadDefault: "加载预置术语表",
-      defaultDe: "加载 DE-DE 标准术语",
-      defaultFr: "加载 FR-FR 标准术语",
+      loadDefault: "预置",
+      defaultDe: "DE 标准术语",
+      defaultFr: "FR 标准术语",
       history: "历史记录",
       preview: "预览 (前10条)",
       totalTerms: "总术语数",
@@ -74,12 +75,14 @@ export const UI_TEXT = {
       apply: "应用",
       applied: "已应用",
       modeLabel: "上传模式",
-      modeReplace: "覆盖模式",
-      modeAppend: "追加模式",
+      modeReplace: "覆盖",
+      modeAppend: "追加",
       filesLoaded: "已加载文件",
-      mergedTotal: "合并后共计",
+      mergedTotal: "当前生效",
       removeFile: "移除此文件",
-      resetAll: "重置所有上下文" 
+      resetAll: "重置所有上下文",
+      emptyState: "暂无术语文件，请上传",
+      termCount: "{count} 条术语"
     }
   },
   en: {
@@ -135,13 +138,14 @@ export const UI_TEXT = {
     // Glossary Manager
     glossary: {
       tabManual: "Manual Input",
-      tabImport: "File Import",
+      tabImport: "File Manager",
       dragDrop: "Click or drag to upload glossary",
+      dragDropCompact: "Click or drag to add more files...",
       formats: "Supports .xlsx, .csv (Max 50MB)",
       parsing: "Parsing...",
-      loadDefault: "Load Default Glossary",
-      defaultDe: "Load DE-DE Standard",
-      defaultFr: "Load FR-FR Standard",
+      loadDefault: "Presets",
+      defaultDe: "DE Standard",
+      defaultFr: "FR Standard",
       history: "History",
       preview: "Preview (Top 10)",
       totalTerms: "Total Terms",
@@ -150,12 +154,14 @@ export const UI_TEXT = {
       apply: "Apply",
       applied: "Applied",
       modeLabel: "Upload Mode",
-      modeReplace: "Replace Mode",
-      modeAppend: "Append Mode",
+      modeReplace: "Replace",
+      modeAppend: "Append",
       filesLoaded: "Loaded Files",
-      mergedTotal: "Merged Total",
+      mergedTotal: "Active Terms",
       removeFile: "Remove file",
-      resetAll: "Reset All Context" 
+      resetAll: "Reset All Context",
+      emptyState: "No glossary files loaded",
+      termCount: "{count} terms"
     }
   }
 };
@@ -220,10 +226,6 @@ You need to inspect the **VALID AREAS** from two perspectives:
 2. Visual: Check for UI issues caused by text expansion in ${langName}, such as Truncation, Overflow, Overlap, or abnormal line breaks.
 
 NOTE: Please IGNORE all "Untranslated" text, as this is handled by another team.`;
-
-  // NOTE: We no longer include the explicit JSON string template here because 
-  // we are using the `responseSchema` feature of the Gemini API which is more robust.
-  // We only describe the *content* requirements.
 
   return `
 ${roleDesc}

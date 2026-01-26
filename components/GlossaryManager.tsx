@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { BookOpen, FileSpreadsheet, Upload, History, Trash2, Check, AlertCircle, FileText, Loader2, Layers, Plus, X, RotateCcw } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { FileSpreadsheet, Upload, History, Trash2, Check, AlertCircle, FileText, Loader2, Layers, Plus, X, Database } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
 interface GlossaryManagerProps {
@@ -24,16 +24,15 @@ interface LoadedFile {
 }
 
 export const GlossaryManager: React.FC<GlossaryManagerProps> = ({ currentGlossary, onUpdate, onLangDetected, t }) => {
-  const [activeTab, setActiveTab] = useState<'manual' | 'import'>('manual');
+  const [activeTab, setActiveTab] = useState<'manual' | 'import'>('import'); // Default to import
   const [isDragging, setIsDragging] = useState(false);
   const [isParsing, setIsParsing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
-  const [uploadMode, setUploadMode] = useState<'replace' | 'append'>('replace');
+  const [uploadMode, setUploadMode] = useState<'replace' | 'append'>('append'); // Default to append usually safer
   const [loadedFiles, setLoadedFiles] = useState<LoadedFile[]>([]);
 
   const [history, setHistory] = useState<GlossaryHistoryItem[]>([]);
-  const [previewData, setPreviewData] = useState<string[]>([]);
   const [totalTerms, setTotalTerms] = useState(0);
 
   useEffect(() => {
@@ -65,7 +64,6 @@ export const GlossaryManager: React.FC<GlossaryManagerProps> = ({ currentGlossar
     localStorage.setItem('vision_lqa_glossary_history', JSON.stringify(newHistory));
   };
 
-  // Helper to guess language from filename
   const detectLanguageFromFile = (filename: string): 'de-DE' | 'fr-FR' | null => {
       const lower = filename.toLowerCase();
       if (lower.includes('de') || lower.includes('ger') || lower.includes('deutsch')) return 'de-DE';
@@ -76,7 +74,6 @@ export const GlossaryManager: React.FC<GlossaryManagerProps> = ({ currentGlossar
   const recompileGlossary = (files: LoadedFile[]) => {
     if (files.length === 0) {
         setTotalTerms(0);
-        setPreviewData([]);
         onUpdate("");
         if (onLangDetected) onLangDetected(null);
         return;
@@ -86,7 +83,6 @@ export const GlossaryManager: React.FC<GlossaryManagerProps> = ({ currentGlossar
     const fileLangs = new Set<'de-DE' | 'fr-FR'>();
 
     files.forEach(file => {
-        // Collect Detected Langs
         const detected = detectLanguageFromFile(file.name);
         if (detected) fileLangs.add(detected);
 
@@ -99,18 +95,16 @@ export const GlossaryManager: React.FC<GlossaryManagerProps> = ({ currentGlossar
         });
     });
 
-    // Heuristic: If we found mostly DE files, notify parent it's DE context
     if (onLangDetected) {
         if (fileLangs.has('de-DE') && !fileLangs.has('fr-FR')) onLangDetected('de-DE');
         else if (fileLangs.has('fr-FR') && !fileLangs.has('de-DE')) onLangDetected('fr-FR');
-        else onLangDetected(null); // Mixed or unknown
+        else onLangDetected(null);
     }
 
     const uniqueTerms = Array.from(termMap.values());
     const mergedContent = uniqueTerms.join('\n');
     
     setTotalTerms(uniqueTerms.length);
-    setPreviewData(uniqueTerms.slice(0, 10));
     onUpdate(mergedContent);
   };
 
@@ -196,7 +190,7 @@ export const GlossaryManager: React.FC<GlossaryManagerProps> = ({ currentGlossar
   const fetchDefaultGlossary = async (lang: 'de' | 'fr') => {
     setIsParsing(true);
     setError(null);
-    const fileName = lang === 'de' ? 'Default_DE.xlsx' : 'Default_FR.xlsx';
+    const fileName = lang === 'de' ? 'Standard_DE_Glossary.xlsx' : 'Standard_FR_Glossary.xlsx';
     try {
         const mockTerms = lang === 'de' 
             ? ["Site = Standort", "Extension = Nebenstelle", "Call Queue = Warteschleife", "IVR Menu = IVR-Menü"]
@@ -225,28 +219,29 @@ export const GlossaryManager: React.FC<GlossaryManagerProps> = ({ currentGlossar
   };
 
   return (
-    <div className="flex flex-col h-full bg-slate-50 border-t border-slate-100">
-      <div className="flex border-b border-slate-200">
-        <button
-          onClick={() => setActiveTab('manual')}
-          className={`flex-1 py-2 text-xs font-medium flex items-center justify-center space-x-2 ${activeTab === 'manual' ? 'bg-white text-accent border-b-2 border-accent' : 'text-slate-500 hover:bg-slate-100'}`}
-        >
-          <FileText className="w-3 h-3" />
-          <span>{t.glossary.tabManual}</span>
-        </button>
+    <div className="flex flex-col bg-slate-50 border-t border-slate-100 h-[340px]">
+      {/* Tabs */}
+      <div className="flex border-b border-slate-200 bg-white shrink-0">
         <button
           onClick={() => setActiveTab('import')}
-          className={`flex-1 py-2 text-xs font-medium flex items-center justify-center space-x-2 ${activeTab === 'import' ? 'bg-white text-accent border-b-2 border-accent' : 'text-slate-500 hover:bg-slate-100'}`}
+          className={`flex-1 py-2.5 text-xs font-medium flex items-center justify-center space-x-2 border-b-2 transition-colors ${activeTab === 'import' ? 'border-accent text-accent bg-slate-50/50' : 'border-transparent text-slate-500 hover:bg-slate-50'}`}
         >
-          <Layers className="w-3 h-3" />
+          <Layers className="w-3.5 h-3.5" />
           <span>{t.glossary.tabImport}</span>
+        </button>
+        <button
+          onClick={() => setActiveTab('manual')}
+          className={`flex-1 py-2.5 text-xs font-medium flex items-center justify-center space-x-2 border-b-2 transition-colors ${activeTab === 'manual' ? 'border-accent text-accent bg-slate-50/50' : 'border-transparent text-slate-500 hover:bg-slate-50'}`}
+        >
+          <FileText className="w-3.5 h-3.5" />
+          <span>{t.glossary.tabManual}</span>
         </button>
       </div>
 
-      <div className="flex-1 p-0 relative">
+      <div className="flex-1 p-0 relative overflow-hidden flex flex-col">
         {activeTab === 'manual' && (
           <textarea 
-            className="w-full h-32 p-3 text-xs border-0 resize-none focus:ring-0 bg-transparent"
+            className="w-full h-full p-4 text-xs border-0 resize-none focus:ring-0 bg-slate-50 text-slate-700 leading-relaxed font-mono"
             placeholder="e.g. Site = Standort..."
             value={currentGlossary}
             onChange={(e) => onUpdate(e.target.value)}
@@ -254,165 +249,149 @@ export const GlossaryManager: React.FC<GlossaryManagerProps> = ({ currentGlossar
         )}
 
         {activeTab === 'import' && (
-          <div className="p-3 h-32 overflow-y-auto custom-scrollbar">
+          <div className="flex flex-col h-full">
             
-            <div className="flex items-center justify-center space-x-4 mb-3 text-[10px]">
-                <label className="flex items-center space-x-1 cursor-pointer">
-                    <input 
-                        type="radio" 
-                        name="uploadMode" 
-                        checked={uploadMode === 'replace'} 
-                        onChange={() => setUploadMode('replace')}
-                        className="text-accent focus:ring-accent"
-                    />
-                    <span className="text-slate-700 font-medium">{t.glossary.modeReplace}</span>
-                </label>
-                <label className="flex items-center space-x-1 cursor-pointer">
-                    <input 
-                        type="radio" 
-                        name="uploadMode" 
-                        checked={uploadMode === 'append'} 
-                        onChange={() => setUploadMode('append')}
-                        className="text-accent focus:ring-accent"
-                    />
-                    <span className="text-slate-700 font-medium">{t.glossary.modeAppend}</span>
-                </label>
+            {/* Header / Mode Switcher */}
+            <div className="px-4 py-3 bg-white border-b border-slate-100 flex items-center justify-between shrink-0">
+               <div className="flex bg-slate-100 rounded-lg p-0.5">
+                  <button 
+                     onClick={() => setUploadMode('append')}
+                     className={`px-3 py-1 text-[10px] font-medium rounded-md transition-all ${uploadMode === 'append' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                  >
+                     {t.glossary.modeAppend}
+                  </button>
+                  <button 
+                     onClick={() => setUploadMode('replace')}
+                     className={`px-3 py-1 text-[10px] font-medium rounded-md transition-all ${uploadMode === 'replace' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                  >
+                     {t.glossary.modeReplace}
+                  </button>
+               </div>
+               
+               {totalTerms > 0 && (
+                 <div className="flex items-center space-x-2">
+                    <span className="text-[10px] font-mono text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">
+                        {totalTerms} Terms
+                    </span>
+                 </div>
+               )}
             </div>
 
-            {/* Active Context Visual Indicator */}
-            {loadedFiles.length > 0 && (
-                <div className="mb-3 flex items-center justify-between bg-green-50 border border-green-200 rounded px-2 py-1.5">
-                    <div className="flex items-center text-green-700 text-[10px] font-bold">
-                        <Check className="w-3 h-3 mr-1" />
-                        {t.contextActive}
-                    </div>
-                    <button 
-                        onClick={handleResetContext}
-                        className="text-[9px] text-red-500 hover:text-red-700 flex items-center font-medium bg-white px-1.5 py-0.5 rounded border border-red-100 shadow-sm hover:shadow"
-                        title={t.glossary.resetAll}
-                    >
-                        <Trash2 className="w-2.5 h-2.5 mr-1" />
-                        {t.glossary.clear}
-                    </button>
-                </div>
-            )}
-
-            {!isParsing && (
-               <div 
-                 onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
-                 onDragLeave={() => setIsDragging(false)}
-                 onDrop={handleFileDrop}
-                 className={`border-2 border-dashed rounded-lg p-3 text-center transition-colors cursor-pointer relative ${isDragging ? 'border-accent bg-blue-50' : 'border-slate-300 hover:border-slate-400 bg-white'}`}
-               >
-                 <input 
-                   type="file" 
-                   accept=".xlsx,.xls,.csv" 
-                   className="absolute inset-0 opacity-0 cursor-pointer"
-                   onChange={(e) => {
-                     if (e.target.files && e.target.files[0]) handleFileUpload(e.target.files[0]);
-                   }}
-                 />
-                 <Upload className="w-5 h-5 mx-auto text-slate-400 mb-1" />
-                 <p className="text-xs font-medium text-slate-600">{t.glossary.dragDrop}</p>
-                 <p className="text-[10px] text-slate-400 mt-0.5">
-                    {uploadMode === 'replace' ? t.glossary.modeReplace : t.glossary.modeAppend}
-                 </p>
-               </div>
-            )}
-
-            {isParsing && (
-              <div className="flex flex-col items-center justify-center h-20">
-                <Loader2 className="w-5 h-5 animate-spin text-accent mb-2" />
-                <span className="text-xs text-slate-500">{t.glossary.parsing}</span>
-              </div>
-            )}
-
-            {error && (
-              <div className="mt-2 p-2 bg-red-50 text-red-600 text-[10px] rounded flex items-start">
-                <AlertCircle className="w-3 h-3 mr-1 mt-0.5 shrink-0" />
-                {error}
-              </div>
-            )}
-
-            {loadedFiles.length > 0 && (
-                <div className="mt-3">
-                    <div className="flex justify-between items-center mb-1.5">
-                         <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{t.glossary.filesLoaded} ({loadedFiles.length})</span>
-                         <span className="text-[10px] text-accent font-mono">{t.glossary.mergedTotal}: {totalTerms}</span>
-                    </div>
-                    
-                    <ul className="space-y-1.5 mb-3">
+            {/* Main Content Area */}
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-3 bg-slate-50/50">
+                
+                {/* File List */}
+                {loadedFiles.length > 0 ? (
+                    <div className="space-y-2">
                         {loadedFiles.map(file => (
-                            <li key={file.id} className="bg-white border border-slate-200 rounded p-1.5 flex justify-between items-center group shadow-sm">
-                                <div className="flex items-center overflow-hidden">
-                                    <FileSpreadsheet className="w-3 h-3 text-green-600 mr-2 shrink-0" />
+                            <div key={file.id} className="bg-white border border-slate-200 rounded-lg p-2.5 flex justify-between items-center group shadow-sm hover:border-slate-300 transition-colors">
+                                <div className="flex items-center overflow-hidden min-w-0">
+                                    <div className="w-8 h-8 rounded-full bg-green-50 flex items-center justify-center mr-3 shrink-0">
+                                        <FileSpreadsheet className="w-4 h-4 text-green-600" />
+                                    </div>
                                     <div className="truncate">
-                                        <div className="text-[10px] font-medium text-slate-700 truncate w-32" title={file.name}>{file.name}</div>
-                                        <div className="text-[9px] text-slate-400">{file.count} terms</div>
+                                        <div className="text-xs font-semibold text-slate-700 truncate" title={file.name}>{file.name}</div>
+                                        <div className="text-[10px] text-slate-400 font-medium">
+                                            {t.glossary.termCount.replace('{count}', file.count)}
+                                        </div>
                                     </div>
                                 </div>
                                 <button 
                                     onClick={() => removeFile(file.id)}
-                                    className="p-1 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
+                                    className="p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded transition-colors opacity-0 group-hover:opacity-100"
                                     title={t.glossary.removeFile}
                                 >
-                                    <X className="w-3 h-3" />
+                                    <Trash2 className="w-3.5 h-3.5" />
                                 </button>
-                            </li>
+                            </div>
                         ))}
-                    </ul>
-                </div>
-            )}
-
-            <div className="mt-3 grid grid-cols-2 gap-2">
-              <button 
-                onClick={() => fetchDefaultGlossary('de')}
-                className="flex items-center justify-center space-x-1 py-1.5 px-2 bg-white border border-slate-200 rounded shadow-sm hover:bg-slate-50 text-[10px] text-slate-700"
-              >
-                <img src="https://flagcdn.com/w20/de.png" className="w-3 h-2" alt="DE" />
-                <span>{t.glossary.defaultDe}</span>
-              </button>
-              <button 
-                onClick={() => fetchDefaultGlossary('fr')}
-                className="flex items-center justify-center space-x-1 py-1.5 px-2 bg-white border border-slate-200 rounded shadow-sm hover:bg-slate-50 text-[10px] text-slate-700"
-              >
-                <img src="https://flagcdn.com/w20/fr.png" className="w-3 h-2" alt="FR" />
-                <span>{t.glossary.defaultFr}</span>
-              </button>
+                    </div>
+                ) : (
+                    <div className="h-full flex flex-col items-center justify-center text-slate-400 py-6">
+                        <Database className="w-8 h-8 mb-2 opacity-20" />
+                        <p className="text-xs">{t.glossary.emptyState}</p>
+                    </div>
+                )}
             </div>
 
-            {loadedFiles.length === 0 && history.length > 0 && (
-               <div className="mt-4 border-t border-slate-100 pt-2">
-                  <h4 className="text-[10px] font-bold text-slate-400 mb-2 uppercase flex items-center">
-                    <History className="w-3 h-3 mr-1" /> {t.glossary.history}
-                  </h4>
-                  <ul className="space-y-1">
-                    {history.map((item, idx) => (
-                      <li key={idx} className="flex justify-between items-center bg-white p-1.5 rounded border border-slate-100">
-                         <div className="truncate flex-1 mr-2">
-                           <div className="text-[10px] font-medium text-slate-700 truncate" title={item.name}>{item.name}</div>
-                           <div className="text-[9px] text-slate-400">{item.count} terms • {item.date}</div>
-                         </div>
+            {/* Bottom: Upload / Add More */}
+            <div className="p-3 bg-white border-t border-slate-200 shrink-0 z-10">
+                {error && (
+                    <div className="mb-2 p-2 bg-red-50 text-red-600 text-[10px] rounded flex items-start border border-red-100">
+                        <AlertCircle className="w-3 h-3 mr-1.5 mt-0.5 shrink-0" />
+                        {error}
+                    </div>
+                )}
+                
+                {!isParsing ? (
+                    <div 
+                        onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+                        onDragLeave={() => setIsDragging(false)}
+                        onDrop={handleFileDrop}
+                        className={`border-2 border-dashed rounded-lg transition-all cursor-pointer relative group flex items-center justify-center
+                            ${loadedFiles.length > 0 ? 'h-10' : 'h-24'}
+                            ${isDragging ? 'border-accent bg-blue-50' : 'border-slate-300 hover:border-accent hover:bg-slate-50 bg-slate-50/50'}
+                        `}
+                    >
+                        <input 
+                            type="file" 
+                            accept=".xlsx,.xls,.csv" 
+                            className="absolute inset-0 opacity-0 cursor-pointer"
+                            onChange={(e) => {
+                                if (e.target.files && e.target.files[0]) handleFileUpload(e.target.files[0]);
+                            }}
+                        />
+                        
+                        {loadedFiles.length > 0 ? (
+                            <div className="flex items-center text-slate-500 group-hover:text-accent">
+                                <Plus className="w-4 h-4 mr-2" />
+                                <span className="text-xs font-medium">{t.glossary.dragDropCompact}</span>
+                            </div>
+                        ) : (
+                            <div className="flex flex-col items-center">
+                                <Upload className="w-5 h-5 mb-1 text-slate-400 group-hover:text-accent" />
+                                <span className="text-xs font-medium text-slate-500 group-hover:text-accent">{t.glossary.dragDrop}</span>
+                            </div>
+                        )}
+                    </div>
+                ) : (
+                    <div className="h-10 flex items-center justify-center bg-slate-50 rounded-lg border border-slate-200">
+                        <Loader2 className="w-4 h-4 animate-spin text-accent mr-2" />
+                        <span className="text-xs text-slate-600 font-medium">{t.glossary.parsing}</span>
+                    </div>
+                )}
+
+                {/* Preset Actions (Optional: Only show if empty to save space?) */}
+                {loadedFiles.length === 0 && (
+                    <div className="mt-2 flex justify-center space-x-3">
                          <button 
-                           onClick={() => {
-                               setUploadMode('replace');
-                               const restoredFile: LoadedFile = {
-                                   id: Math.random().toString(36).substr(2, 9),
-                                   name: item.name,
-                                   count: item.count,
-                                   terms: item.content.split('\n')
-                               };
-                               setLoadedFiles([restoredFile]);
-                           }}
-                           className="text-[10px] text-accent hover:underline shrink-0"
+                             onClick={() => fetchDefaultGlossary('de')}
+                             className="text-[10px] text-slate-400 hover:text-accent underline decoration-dotted"
                          >
-                           {t.glossary.apply}
+                             {t.glossary.loadDefault} DE
                          </button>
-                      </li>
-                    ))}
-                  </ul>
-               </div>
-            )}
+                         <button 
+                             onClick={() => fetchDefaultGlossary('fr')}
+                             className="text-[10px] text-slate-400 hover:text-accent underline decoration-dotted"
+                         >
+                             {t.glossary.loadDefault} FR
+                         </button>
+                    </div>
+                )}
+
+                {/* Footer Action: Clear All (Only if files exist) */}
+                {loadedFiles.length > 0 && (
+                    <div className="mt-2 flex justify-end">
+                        <button 
+                            onClick={handleResetContext}
+                            className="text-[10px] text-slate-400 hover:text-red-500 flex items-center transition-colors"
+                        >
+                            <Trash2 className="w-3 h-3 mr-1" />
+                            {t.glossary.resetAll}
+                        </button>
+                    </div>
+                )}
+            </div>
           </div>
         )}
       </div>
