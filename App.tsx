@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, Suspense } from 'react';
+import React, { useState, useRef, useCallback, Suspense, useEffect } from 'react';
 import { UploadArea } from './components/UploadArea';
 import { PairList } from './components/PairList';
 import { CompareView } from './components/CompareView';
@@ -6,7 +6,7 @@ import { GlossaryManager } from './components/GlossaryManager';
 import { ScreenshotPair, LlmRequestPayload, BulkProcessingState, ScreenshotReport, AppLanguage } from './types';
 import { callTranslationQaLLM } from './services/llmService';
 import { generateReportHtml } from './services/reportGenerator';
-import { Layers, Activity, BookOpen, PanelLeftOpen, PanelLeftClose, PlayCircle, Globe, Loader2, RotateCcw, Trash2 } from 'lucide-react';
+import { Layers, Activity, BookOpen, PanelLeftOpen, PanelLeftClose, PlayCircle, Globe, Loader2, RotateCcw, Trash2, GripVertical } from 'lucide-react';
 import { LLM_DISPLAY_NAME, APP_VERSION, UI_TEXT } from './constants';
 import JSZip from 'jszip';
 
@@ -30,6 +30,13 @@ const App: React.FC = () => {
   const [isSidebarOpen, setSidebarOpen] = useState(true);
   const [activeRightPanel, setActiveRightPanel] = useState<'report' | 'global'>('report');
   
+  // Right Panel Resizing State
+  const [rightPanelWidth, setRightPanelWidth] = useState(() => {
+    const saved = localStorage.getItem('vision_lqa_right_width');
+    return saved ? parseInt(saved, 10) : 400;
+  });
+  const [isResizingRight, setIsResizingRight] = useState(false);
+
   // Bulk Run State
   const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
   const [bulkState, setBulkState] = useState<BulkProcessingState>({
@@ -44,6 +51,48 @@ const App: React.FC = () => {
   
   const t = UI_TEXT[appLanguage];
   const abortControllerRef = useRef<AbortController | null>(null);
+
+  // --- Resizing Logic ---
+  const startResizingRight = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsResizingRight(true);
+  }, []);
+
+  const stopResizingRight = useCallback(() => {
+    setIsResizingRight(false);
+    localStorage.setItem('vision_lqa_right_width', String(rightPanelWidth));
+  }, [rightPanelWidth]);
+
+  const resizeRight = useCallback((e: MouseEvent) => {
+    if (isResizingRight) {
+      // Calculate new width: Viewport Width - Mouse X Position
+      const newWidth = window.innerWidth - e.clientX;
+      // Constraints: Min 300px, Max 800px (or 60% of screen)
+      const clampedWidth = Math.max(300, Math.min(newWidth, window.innerWidth * 0.6));
+      setRightPanelWidth(clampedWidth);
+    }
+  }, [isResizingRight]);
+
+  useEffect(() => {
+    if (isResizingRight) {
+      window.addEventListener('mousemove', resizeRight);
+      window.addEventListener('mouseup', stopResizingRight);
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none'; // Prevent text selection while dragging
+    } else {
+      window.removeEventListener('mousemove', resizeRight);
+      window.removeEventListener('mouseup', stopResizingRight);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    }
+    return () => {
+      window.removeEventListener('mousemove', resizeRight);
+      window.removeEventListener('mouseup', stopResizingRight);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+  }, [isResizingRight, resizeRight, stopResizingRight]);
+
 
   // Handle Language Change
   const toggleLanguage = () => {
@@ -256,7 +305,7 @@ const App: React.FC = () => {
           deImageBase64: pair.deImageUrl,
           targetLanguage: pair.targetLanguage,
           glossaryText,
-          reportLanguage: appLanguage // Pass current language for bulk
+          reportLanguage: appLanguage // Pass current language
         };
 
         const response: any = await Promise.race([
@@ -519,11 +568,22 @@ const App: React.FC = () => {
           {isSidebarOpen ? <PanelLeftClose className="w-4 h-4" /> : <PanelLeftOpen className="w-4 h-4" />}
         </button>
 
-        <section className="flex-1 relative border-r border-slate-200 bg-slate-200 overflow-hidden">
+        <section className="flex-1 relative bg-slate-200 overflow-hidden flex flex-col min-w-0">
           <CompareView pair={selectedPair} t={t} />
         </section>
 
-        <aside className="w-[400px] flex flex-col bg-white shrink-0 shadow-xl z-10 relative">
+        {/* Resizer Handle */}
+        <div
+          className={`w-1 hover:w-1.5 cursor-col-resize z-30 transition-all delay-75 flex items-center justify-center group ${isResizingRight ? 'bg-accent w-1.5' : 'bg-slate-200 hover:bg-blue-300'}`}
+          onMouseDown={startResizingRight}
+        >
+            <div className={`h-8 w-0.5 rounded-full transition-colors ${isResizingRight ? 'bg-white' : 'bg-slate-400 group-hover:bg-white'}`}></div>
+        </div>
+
+        <aside 
+            className="flex flex-col bg-white shrink-0 shadow-xl z-10 relative"
+            style={{ width: `${rightPanelWidth}px` }}
+        >
           <Suspense fallback={
             <div className="flex flex-col items-center justify-center h-full text-slate-400">
               <Loader2 className="w-8 h-8 animate-spin mb-2" />
