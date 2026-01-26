@@ -2,7 +2,7 @@ import { SupportedLocale, AppLanguage } from "./types";
 
 export const LLM_MODEL_ID = 'gemini-3-flash-preview';
 export const LLM_DISPLAY_NAME = 'Gemini 3 Flash';
-export const APP_VERSION = 'v1.4.9'; // Bump version
+export const APP_VERSION = 'v1.5.0'; // Bump version
 
 // UI Translations
 export const UI_TEXT = {
@@ -181,9 +181,14 @@ export const getAnalysisSystemPrompt = (targetLang: SupportedLocale, reportLang:
   const langCode = targetLang;
   
   const isZh = reportLang === 'zh';
+  
+  // Define strict output language rules
+  const outputLangRuleZh = `**关键输出规则**：所有的分析描述、问题详情、优化建议必须使用 **简体中文** 撰写（即使你在分析法语或德语界面）。`;
+  const outputLangRuleEn = `**CRITICAL OUTPUT RULE**: All analysis descriptions, issue details, and advice MUST be written in **ENGLISH** (even though you are analyzing a French or German interface).`;
+
   const roleDesc = isZh 
-    ? `你是一名专业的${langName}本地化质量保证专家（LQA Specialist，母语为 ${langCode}）。你具备极强的视觉空间感知能力，能够严格遵循“遮罩过滤规则”。`
-    : `You are an expert Localization Quality Assurance (LQA) Specialist in ${langName} (Native in ${langCode}). You possess strong visual-spatial perception and strictly adhere to "Mask Filtering Rules".`;
+    ? `你是一名专业的${langName}本地化质量保证专家（LQA Specialist，母语为 ${langCode}）。${outputLangRuleZh} 你具备极强的视觉空间感知能力，能够严格遵循“遮罩过滤规则”。`
+    : `You are an expert Localization Quality Assurance (LQA) Specialist in ${langName} (Native in ${langCode}). ${outputLangRuleEn} You possess strong visual-spatial perception and strictly adhere to "Mask Filtering Rules".`;
 
   const maskInstructionZh = `
 *** 核心规则：严格的遮罩过滤 (STRICT MASK FILTERING) ***
@@ -231,7 +236,8 @@ ${maskInstructionZh}
 - 只有在无法缩短时，才建议“允许换行”或“增加宽度”。
 - 绝不允许“建议”字段为空。
 
-注意：请忽略所有“未翻译（Untranslated）”的文本，这部分由其他团队负责。`
+注意：请忽略所有“未翻译（Untranslated）”的文本，这部分由其他团队负责。
+再次强调：**所有报告内容必须使用中文输出。**`
     : `Task Objective:
 This is a UI Screenshot Testing task.
 ${maskInstructionEn}
@@ -245,7 +251,8 @@ You need to inspect the **VALID AREAS** from two perspectives:
 - Only suggest "allow wrapping" or "increase width" if no shorter text is possible.
 - The 'suggestionsTarget' field MUST NEVER BE EMPTY.
 
-NOTE: Please IGNORE all "Untranslated" text, as this is handled by another team.`;
+NOTE: Please IGNORE all "Untranslated" text, as this is handled by another team.
+REITERATION: **ALL REPORT CONTENT MUST BE IN ENGLISH.**`;
 
   return `
 ${roleDesc}

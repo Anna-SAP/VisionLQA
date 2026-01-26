@@ -1,6 +1,7 @@
 import React from 'react';
 import { ScreenshotPair } from '../types';
 import { FileImage, CheckCircle2, AlertCircle, Loader2, XCircle } from 'lucide-react';
+import { determineStrictQuality } from '../services/reportGenerator';
 
 interface PairListProps {
   pairs: ScreenshotPair[];
@@ -21,17 +22,22 @@ export const PairList: React.FC<PairListProps> = ({ pairs, selectedId, onSelect 
   const getQualityBadge = (pair: ScreenshotPair) => {
     if (pair.status !== 'completed' || !pair.report || !pair.report.overall) return null;
     
-    const level = pair.report.overall.qualityLevel;
-    const colorMap = {
+    // Use the shared strict logic to ensure list view matches detail view
+    const level = determineStrictQuality(pair.report);
+    
+    const colorMap: Record<string, string> = {
       Critical: 'bg-red-100 text-red-800 border-red-200',
       Poor: 'bg-orange-100 text-orange-800 border-orange-200',
       Average: 'bg-yellow-100 text-yellow-800 border-yellow-200',
       Good: 'bg-blue-100 text-blue-800 border-blue-200',
       Perfect: 'bg-green-100 text-green-800 border-green-200',
+      Excellent: 'bg-green-100 text-green-800 border-green-200', // Handle Excellent same as Perfect
     };
 
+    const badgeClass = colorMap[level] || 'bg-slate-100 text-slate-800 border-slate-200';
+
     return (
-      <span className={`text-[10px] px-1.5 py-0.5 rounded border ${colorMap[level]} font-semibold ml-2`}>
+      <span className={`text-[10px] px-1.5 py-0.5 rounded border ${badgeClass} font-semibold ml-2`}>
         {level}
       </span>
     );

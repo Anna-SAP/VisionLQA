@@ -1,6 +1,7 @@
 import { GoogleGenAI, Type, Schema } from "@google/genai";
 import { LlmRequestPayload, LlmResponse, ScreenshotReport } from '../types';
 import { getAnalysisSystemPrompt, LLM_MODEL_ID } from '../constants';
+import { determineStrictQuality } from './reportGenerator';
 
 interface ProcessedImage {
   mimeType: string;
@@ -240,6 +241,16 @@ export async function callTranslationQaLLM(payload: LlmRequestPayload): Promise<
       
       // Fallback: Ensure issues array exists
       if (!parsedReport.issues) parsedReport.issues = [];
+
+      // FORCE STRICT QUALITY GRADING
+      // This ensures the data state is consistent with what the UI displays.
+      // E.g. If LLM says "Good" but finds Layout issues, we downgrade it to "Poor" here.
+      // This serves as the single source of truth for the entire app.
+      const strictLevel = determineStrictQuality(parsedReport);
+      
+      // Type assertion needed as strictLevel includes 'Excellent' which might slightly differ from 'Perfect' in some schemas, 
+      // but UI handles both.
+      parsedReport.overall.qualityLevel = strictLevel as any;
 
       return {
         report: parsedReport
