@@ -244,11 +244,15 @@ const IssueCard: React.FC<{ issue: QaIssue, targetLang: string }> = ({ issue, ta
 
       <div className="bg-green-50 p-2 rounded border border-green-100">
          <span className="block text-green-700 text-[10px] font-bold mb-1">Suggestion ({targetLang})</span>
-         <ul className="list-disc list-inside">
-           {(issue.suggestionsTarget || []).map((sug, idx) => (
-             <li key={idx} className="text-sm text-green-800 font-medium break-words">{sug}</li>
-           ))}
-         </ul>
+         {(!issue.suggestionsTarget || issue.suggestionsTarget.length === 0) ? (
+            <span className="text-sm text-green-800/60 italic">No specific suggestion provided (Review layout or glossary).</span>
+         ) : (
+            <ul className="list-disc list-inside">
+              {issue.suggestionsTarget.map((sug, idx) => (
+                <li key={idx} className="text-sm text-green-800 font-medium break-words">{sug}</li>
+              ))}
+            </ul>
+         )}
       </div>
     </div>
   );

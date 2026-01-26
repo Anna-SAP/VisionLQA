@@ -2,7 +2,7 @@ import { SupportedLocale, AppLanguage } from "./types";
 
 export const LLM_MODEL_ID = 'gemini-3-flash-preview';
 export const LLM_DISPLAY_NAME = 'Gemini 3 Flash';
-export const APP_VERSION = 'v1.4.8'; // Bump version
+export const APP_VERSION = 'v1.4.9'; // Bump version
 
 // UI Translations
 export const UI_TEXT = {
@@ -226,6 +226,11 @@ ${maskInstructionZh}
 1. 语言层面：翻译准确性（不包含未翻译的内容）、术语、语法、语气、文化与格式（日期/数字/单位）；
 2. 视觉层面：${langName}文本是否因为长度增加而导致 截断（Truncation）、溢出、重叠、换行异常 等 UI 问题。
 
+**重要规则 - 建议 (Suggestion)**：
+- 对于“UI 截断”问题，你的首要任务是提供更短的翻译（缩写或同义词）以适应空间。
+- 只有在无法缩短时，才建议“允许换行”或“增加宽度”。
+- 绝不允许“建议”字段为空。
+
 注意：请忽略所有“未翻译（Untranslated）”的文本，这部分由其他团队负责。`
     : `Task Objective:
 This is a UI Screenshot Testing task.
@@ -234,6 +239,11 @@ ${maskInstructionEn}
 You need to inspect the **VALID AREAS** from two perspectives:
 1. Linguistic: Translation accuracy (excluding untranslated text), terminology, grammar, tone, culture, and formatting (dates/numbers/units).
 2. Visual: Check for UI issues caused by text expansion in ${langName}, such as Truncation, Overflow, Overlap, or abnormal line breaks.
+
+**CRITICAL RULE - SUGGESTIONS**:
+- For "Visual Truncation" issues, your PRIMARY job is to suggest a SHORTER TRANSLATION (abbreviation or synonym) to fit the space.
+- Only suggest "allow wrapping" or "increase width" if no shorter text is possible.
+- The 'suggestionsTarget' field MUST NEVER BE EMPTY.
 
 NOTE: Please IGNORE all "Untranslated" text, as this is handled by another team.`;
 

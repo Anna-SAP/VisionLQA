@@ -28,10 +28,10 @@ const qaIssueSchema: Schema = {
     suggestionsTarget: { 
       type: Type.ARRAY, 
       items: { type: Type.STRING },
-      description: "List of suggested corrections"
+      description: "MANDATORY. Provide at least one actionable fix. For Truncation: provide a shorter translation/abbreviation. For Layout: suggest 'Resize container' or similar. NEVER leave empty."
     }
   },
-  required: ["id", "location", "issueCategory", "severity", "description"]
+  required: ["id", "location", "issueCategory", "severity", "description", "suggestionsTarget"]
 };
 
 const scoresSchema: Schema = {
@@ -190,6 +190,12 @@ export async function callTranslationQaLLM(payload: LlmRequestPayload): Promise<
         3. Terminology Consistency
         4. Formatting (Dates, Numbers)
         
+        CRITICAL RULES FOR 'suggestionsTarget':
+        1. NEVER leave 'suggestionsTarget' empty.
+        2. For TRUNCATION/LAYOUT issues: You MUST provide a shorter translation or abbreviation to fit the space.
+        3. For MISTRANSLATION: Provide the corrected text.
+        4. If no specific replacement exists, suggest "Allow text wrapping" or "Adjust container width".
+
         IMPORTANT: Your response MUST be valid JSON adhering strictly to the provided schema.
       `;
 
