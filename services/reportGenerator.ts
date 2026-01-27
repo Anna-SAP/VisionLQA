@@ -5,20 +5,57 @@ import { ScreenshotReport, QaScores } from '../types';
 export const determineStrictQuality = (report: ScreenshotReport): 'Critical' | 'Poor' | 'Good' | 'Excellent' => {
   const issues = report.issues || [];
   
-  // 1. Critical: Explicit severity or existing level
+  // 1. Critical Logic (Highest Priority)
   if (issues.some(i => i.severity === 'Critical')) return 'Critical';
   if (report.overall.qualityLevel === 'Critical') return 'Critical';
 
-  // 2. Poor: Presence of Terminology or Layout issues
-  const hasTerm = issues.some(i => i.issueCategory === 'Terminology');
-  const hasLayout = issues.some(i => i.issueCategory === 'Layout');
-  if (hasTerm || hasLayout) return 'Poor';
+  // 2. Poor Logic (Override Rule)
+  // Rule A: At least 1 Major issue
+  const hasMajor = issues.some(i => i.severity === 'Major');
+  // Rule B: More than 3 Minor issues
+  const minorCount = issues.filter(i => i.severity === 'Minor').length;
+
+  if (hasMajor || minorCount > 3) return 'Poor';
 
   // 3. Excellent: No issues found
   if (issues.length === 0) return 'Excellent';
 
-  // 4. Good: Issues exist but are minor (Style, Grammar, etc.)
+  // 4. Good: Default for 1-3 minor issues
   return 'Good';
+};
+
+// Ensure visual scores match the found issues
+export const enforceScoreConsistency = (report: ScreenshotReport) => {
+  const issues = report.issues || [];
+  
+  issues.forEach(issue => {
+    let scoreKey: keyof QaScores | null = null;
+    
+    // Map categories to score keys based on type definition
+    switch(issue.issueCategory) {
+      case 'Mistranslation': scoreKey = 'accuracy'; break;
+      case 'Terminology': scoreKey = 'terminology'; break;
+      case 'Layout': scoreKey = 'layout'; break;
+      case 'Grammar': scoreKey = 'grammar'; break;
+      case 'Formatting': scoreKey = 'formatting'; break;
+      case 'Style': scoreKey = 'localizationTone'; break;
+      default: break;
+    }
+
+    if (scoreKey) {
+        // Enforce score caps based on severity
+        if (issue.severity === 'Critical') {
+            // Critical issues crush the score to 1
+            report.overall.scores[scoreKey] = Math.min(report.overall.scores[scoreKey], 1);
+        } else if (issue.severity === 'Major') {
+            // Major issues cap the score at 2 (Poor range)
+            report.overall.scores[scoreKey] = Math.min(report.overall.scores[scoreKey], 2);
+        } else if (issue.severity === 'Minor') {
+            // Minor issues cap the score at 4 (Good but not Perfect)
+            report.overall.scores[scoreKey] = Math.min(report.overall.scores[scoreKey], 4);
+        }
+    }
+  });
 };
 
 export const determineIssueTypeTag = (report: ScreenshotReport): string => {

@@ -21,33 +21,30 @@ interface JiraData {
 
 const generateJiraData = (issue: QaIssue, targetLang: string, fileName: string): JiraData => {
   // Construct a professional English Title
-  // Since description might be in Chinese, we construct the title structurally to ensure English.
-  const title = `[LQA][${issue.issueCategory}] Issue detected in ${issue.location || 'UI'}`;
+  const title = `[AutoSSR QA][${targetLang}][${issue.issueCategory}] Issue detected in ${issue.location || 'UI'}`;
 
-  const description = `*   **Issue ID:** ${issue.id}
-*   **Category:** ${issue.issueCategory}
-*   **Severity:** ${issue.severity}
-*   **Location:** ${issue.location || 'N/A'}
-*   **Source File:** ${fileName}
+  // Strict JIRA Text Formatting
+  const description = `*Category:* ${issue.issueCategory}
 
-*   **Source Text (EN):**
-{quote}
+*Severity:* ${issue.severity}
+
+*Location:* ${issue.location || 'N/A'}
+
+*Source File:* ${fileName}
+
+*Source Text (EN):*
 ${issue.sourceText || '(No text)'}
-{quote}
 
-*   **Current Translation (${targetLang}):**
-{quote}
+*Current Translation (${targetLang}):*
 ${issue.targetText || '(No text)'}
-{quote}
 
-*   **Suggested Translation:**
-{quote}
+*Suggested Translation:*
 ${issue.suggestionsTarget?.join('\n') || 'N/A'}
-{quote}
 
-*   **Issue Detail:**
+*Issue Detail:*
 ${issue.description}
-`;
+
+!bug.png|thumbnail!`;
 
   return { title, description };
 };

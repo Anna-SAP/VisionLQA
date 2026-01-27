@@ -1,7 +1,7 @@
 import { GoogleGenAI, Type, Schema } from "@google/genai";
 import { LlmRequestPayload, LlmResponse, ScreenshotReport } from '../types';
 import { getAnalysisSystemPrompt, LLM_MODEL_ID } from '../constants';
-import { determineStrictQuality } from './reportGenerator';
+import { determineStrictQuality, enforceScoreConsistency } from './reportGenerator';
 
 interface ProcessedImage {
   mimeType: string;
@@ -246,6 +246,11 @@ export async function callTranslationQaLLM(payload: LlmRequestPayload): Promise<
       // This ensures the data state is consistent with what the UI displays.
       // E.g. If LLM says "Good" but finds Layout issues, we downgrade it to "Poor" here.
       // This serves as the single source of truth for the entire app.
+      
+      // 1. Enforce Scores (Downgrade high scores if major issues exist)
+      enforceScoreConsistency(parsedReport);
+
+      // 2. Determine Final Strict Label based on issues
       const strictLevel = determineStrictQuality(parsedReport);
       
       // Type assertion needed as strictLevel includes 'Excellent' which might slightly differ from 'Perfect' in some schemas, 
