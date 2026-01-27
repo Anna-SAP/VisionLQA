@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { ScreenshotPair, QaIssue, ScreenshotReport } from '../types';
 import { Button } from './Button';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from 'recharts';
-import { AlertTriangle, AlertOctagon, Info, Download, RefreshCw, AlertCircle, FileText, Loader2 } from 'lucide-react';
+import { AlertTriangle, AlertOctagon, Info, Download, RefreshCw, AlertCircle, FileText, Loader2, Bug, Copy, Check, X } from 'lucide-react';
 import { generateReportHtml, determineStrictQuality, generateExportFilename } from '../services/reportGenerator';
 
 interface ReportPanelProps {
@@ -13,8 +13,48 @@ interface ReportPanelProps {
   t: any; // Translation object
 }
 
+// --- JIRA Generator Logic ---
+interface JiraData {
+  title: string;
+  description: string;
+}
+
+const generateJiraData = (issue: QaIssue, targetLang: string, fileName: string): JiraData => {
+  // Construct a professional English Title
+  // Since description might be in Chinese, we construct the title structurally to ensure English.
+  const title = `[LQA][${issue.issueCategory}] Issue detected in ${issue.location || 'UI'}`;
+
+  const description = `*   **Issue ID:** ${issue.id}
+*   **Category:** ${issue.issueCategory}
+*   **Severity:** ${issue.severity}
+*   **Location:** ${issue.location || 'N/A'}
+*   **Source File:** ${fileName}
+
+*   **Source Text (EN):**
+{quote}
+${issue.sourceText || '(No text)'}
+{quote}
+
+*   **Current Translation (${targetLang}):**
+{quote}
+${issue.targetText || '(No text)'}
+{quote}
+
+*   **Suggested Translation:**
+{quote}
+${issue.suggestionsTarget?.join('\n') || 'N/A'}
+{quote}
+
+*   **Issue Detail:**
+${issue.description}
+`;
+
+  return { title, description };
+};
+
 export const ReportPanel: React.FC<ReportPanelProps> = ({ pair, onGenerate, isGenerating, glossary, t }) => {
   const [isExporting, setIsExporting] = useState(false);
+  const [bugModalData, setBugModalData] = useState<JiraData | null>(null);
 
   if (!pair) {
     return (
@@ -143,8 +183,21 @@ export const ReportPanel: React.FC<ReportPanelProps> = ({ pair, onGenerate, isGe
     }
   };
 
+  const openBugModal = (issue: QaIssue) => {
+    const jiraData = generateJiraData(issue, targetLangShort, pair.fileName);
+    setBugModalData(jiraData);
+  };
+
   return (
-    <div className="h-full flex flex-col bg-white overflow-hidden">
+    <div className="h-full flex flex-col bg-white overflow-hidden relative">
+      {/* Bug Preview Modal */}
+      {bugModalData && (
+        <BugPreviewModal 
+          data={bugModalData} 
+          onClose={() => setBugModalData(null)} 
+        />
+      )}
+
       {/* Header */}
       <div className="p-4 border-b border-slate-200 flex justify-between items-center bg-white z-10 shrink-0">
         <div className="overflow-hidden mr-2">
@@ -238,7 +291,12 @@ export const ReportPanel: React.FC<ReportPanelProps> = ({ pair, onGenerate, isGe
             
             <div className="space-y-4 pb-4">
               {report.issues.map((issue) => (
-                <IssueCard key={issue.id} issue={issue} targetLang={targetLangShort} />
+                <IssueCard 
+                  key={issue.id} 
+                  issue={issue} 
+                  targetLang={targetLangShort} 
+                  onCreateBug={() => openBugModal(issue)}
+                />
               ))}
               {report.issues.length === 0 && (
                 <p className="text-center text-slate-400 text-sm py-4">{t.noIssues}</p>
@@ -250,7 +308,79 @@ export const ReportPanel: React.FC<ReportPanelProps> = ({ pair, onGenerate, isGe
   );
 };
 
-const IssueCard: React.FC<{ issue: QaIssue, targetLang: string }> = ({ issue, targetLang }) => {
+// --- Bug Preview Modal ---
+const BugPreviewModal: React.FC<{ data: JiraData; onClose: () => void }> = ({ data, onClose }) => {
+  const [copied, setCopied] = useState<'title' | 'desc' | null>(null);
+
+  const handleCopy = (text: string, type: 'title' | 'desc') => {
+    navigator.clipboard.writeText(text);
+    setCopied(type);
+    setTimeout(() => setCopied(null), 2000);
+  };
+
+  return (
+    <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-[2px] p-4">
+      <div className="bg-white rounded-lg shadow-2xl w-full max-w-lg border border-slate-200 flex flex-col max-h-[90%]">
+        <div className="px-4 py-3 border-b border-slate-100 flex justify-between items-center bg-slate-50 rounded-t-lg">
+          <h3 className="font-bold text-slate-800 flex items-center">
+            <Bug className="w-4 h-4 mr-2 text-accent" />
+            Create Bug (JIRA)
+          </h3>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        
+        <div className="p-4 overflow-y-auto flex-1 custom-scrollbar space-y-4">
+          {/* Title Field */}
+          <div>
+             <div className="flex justify-between items-center mb-1">
+                <label className="text-xs font-bold text-slate-500 uppercase">Bug Title</label>
+                <button 
+                  onClick={() => handleCopy(data.title, 'title')}
+                  className={`text-[10px] flex items-center px-2 py-0.5 rounded transition-colors ${copied === 'title' ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                >
+                  {copied === 'title' ? <Check className="w-3 h-3 mr-1" /> : <Copy className="w-3 h-3 mr-1" />}
+                  {copied === 'title' ? 'Copied' : 'Copy'}
+                </button>
+             </div>
+             <div className="bg-slate-50 p-2 rounded border border-slate-200 text-sm font-medium text-slate-800 break-words">
+                {data.title}
+             </div>
+          </div>
+
+          {/* Description Field */}
+          <div>
+             <div className="flex justify-between items-center mb-1">
+                <label className="text-xs font-bold text-slate-500 uppercase">Description</label>
+                <button 
+                  onClick={() => handleCopy(data.description, 'desc')}
+                  className={`text-[10px] flex items-center px-2 py-0.5 rounded transition-colors ${copied === 'desc' ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                >
+                  {copied === 'desc' ? <Check className="w-3 h-3 mr-1" /> : <Copy className="w-3 h-3 mr-1" />}
+                  {copied === 'desc' ? 'Copied' : 'Copy'}
+                </button>
+             </div>
+             <pre className="bg-slate-50 p-3 rounded border border-slate-200 text-xs text-slate-700 font-mono whitespace-pre-wrap leading-relaxed h-64 overflow-y-auto custom-scrollbar">
+                {data.description}
+             </pre>
+          </div>
+        </div>
+
+        <div className="p-4 border-t border-slate-100 bg-slate-50 rounded-b-lg flex justify-end">
+            <Button onClick={onClose} variant="secondary" size="sm">Close</Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --- Issue Card Component ---
+const IssueCard: React.FC<{ 
+  issue: QaIssue, 
+  targetLang: string, 
+  onCreateBug: () => void 
+}> = ({ issue, targetLang, onCreateBug }) => {
   const getSeverityColor = (sev: string) => {
     switch(sev) {
       case 'Critical': return 'border-l-red-500 bg-red-50/50';
@@ -266,14 +396,26 @@ const IssueCard: React.FC<{ issue: QaIssue, targetLang: string }> = ({ issue, ta
   };
 
   return (
-    <div className={`p-3 rounded border border-slate-200 border-l-4 ${getSeverityColor(issue.severity)} shadow-sm`}>
+    <div className={`p-3 rounded border border-slate-200 border-l-4 ${getSeverityColor(issue.severity)} shadow-sm relative group`}>
       <div className="flex justify-between items-start mb-2">
         <div className="flex items-center space-x-2">
           {getIcon(issue.severity)}
           <span className="font-bold text-sm text-slate-800">{issue.id}</span>
           <span className="text-xs px-2 py-0.5 bg-white border rounded text-slate-500">{issue.issueCategory}</span>
         </div>
-        <span className="text-[10px] text-slate-400 uppercase tracking-wider">{issue.severity}</span>
+        
+        <div className="flex items-center gap-2">
+            <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">{issue.severity}</span>
+            {/* Create Bug Button */}
+            <button 
+                onClick={onCreateBug}
+                className="flex items-center gap-1 px-2 py-1 text-[10px] font-medium text-slate-500 bg-white border border-slate-200 rounded hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 transition-colors shadow-sm"
+                title="Create JIRA Ticket"
+            >
+                <Bug className="w-3 h-3" />
+                <span className="hidden sm:inline">Create Bug</span>
+            </button>
+        </div>
       </div>
       
       <p className="text-xs text-slate-500 mb-2 font-mono bg-white/50 p-1 rounded inline-block">{issue.location}</p>
