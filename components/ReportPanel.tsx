@@ -20,8 +20,16 @@ interface JiraData {
 }
 
 const generateJiraData = (issue: QaIssue, targetLang: string, fileName: string): JiraData => {
+  // Extract Product Prefix (first segment of filename)
+  // e.g. "Uns_page_01" -> "UNS"
+  let productPrefix = 'UI';
+  const firstSegment = fileName.split(/[_-]/)[0];
+  if (firstSegment && firstSegment.length > 0) {
+      productPrefix = firstSegment.toUpperCase();
+  }
+
   // Construct a professional English Title
-  const title = `[AutoSSR QA][${targetLang}][${issue.issueCategory}] Issue detected in ${issue.location || 'UI'}`;
+  const title = `[AutoSSR QA][${targetLang}][${issue.issueCategory}][${productPrefix}] Issue detected in ${issue.location || 'UI'}`;
 
   // Strict JIRA Text Formatting
   const description = `*Category:* ${issue.issueCategory}
