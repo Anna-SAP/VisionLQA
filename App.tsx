@@ -124,7 +124,10 @@ const App: React.FC = () => {
   };
 
   // New: Clear only screenshots list
-  const handleClearScreenshots = () => {
+  const handleClearScreenshots = (e: React.MouseEvent) => {
+      e.stopPropagation();
+      e.preventDefault();
+      
       if (pairs.length > 0) {
           if (window.confirm("Clear all screenshots? Your glossary/context will be preserved.")) {
               setPairs([]);
@@ -539,12 +542,13 @@ const App: React.FC = () => {
             />
           </div>
 
-          <div className="p-2 bg-slate-50 text-xs font-bold text-slate-400 uppercase tracking-wider px-4 py-3 flex justify-between items-center">
+          <div className="p-2 bg-slate-50 text-xs font-bold text-slate-400 uppercase tracking-wider px-4 py-3 flex justify-between items-center relative z-10">
             <span>{t.screenshotsList} ({pairs.length})</span>
             {pairs.length > 0 && (
                 <button 
-                    onClick={handleClearScreenshots}
-                    className="text-[10px] text-red-500 hover:bg-red-50 px-2 py-0.5 rounded flex items-center border border-red-200 transition-colors"
+                    type="button"
+                    onClick={(e) => handleClearScreenshots(e)}
+                    className="text-[10px] text-red-500 hover:bg-red-50 px-2 py-0.5 rounded flex items-center border border-red-200 transition-colors cursor-pointer"
                     title={t.clearList}
                 >
                     <Trash2 className="w-3 h-3 mr-1" />

@@ -108,7 +108,10 @@ export const GlossaryManager: React.FC<GlossaryManagerProps> = ({ currentGlossar
     onUpdate(mergedContent);
   };
 
-  const handleResetContext = () => {
+  const handleResetContext = (e: React.MouseEvent) => {
+      e.stopPropagation();
+      e.preventDefault();
+      
       if (window.confirm("Are you sure you want to remove all loaded glossary files?")) {
           setLoadedFiles([]);
           onUpdate("");
@@ -315,7 +318,7 @@ export const GlossaryManager: React.FC<GlossaryManagerProps> = ({ currentGlossar
             </div>
 
             {/* Bottom: Upload / Add More */}
-            <div className="p-3 bg-white border-t border-slate-200 shrink-0 z-10">
+            <div className="p-3 bg-white border-t border-slate-200 shrink-0 z-10 relative">
                 {error && (
                     <div className="mb-2 p-2 bg-red-50 text-red-600 text-[10px] rounded flex items-start border border-red-100">
                         <AlertCircle className="w-3 h-3 mr-1.5 mt-0.5 shrink-0" />
@@ -383,8 +386,9 @@ export const GlossaryManager: React.FC<GlossaryManagerProps> = ({ currentGlossar
                 {loadedFiles.length > 0 && (
                     <div className="mt-2 flex justify-end">
                         <button 
-                            onClick={handleResetContext}
-                            className="text-[10px] text-slate-400 hover:text-red-500 flex items-center transition-colors"
+                            type="button"
+                            onClick={(e) => handleResetContext(e)}
+                            className="text-[10px] text-slate-400 hover:text-red-500 flex items-center transition-colors cursor-pointer"
                         >
                             <Trash2 className="w-3 h-3 mr-1" />
                             {t.glossary.resetAll}
